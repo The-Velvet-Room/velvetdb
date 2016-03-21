@@ -1,0 +1,28 @@
+{{ define "title" }}{{.Player.Nickname}}{{ end }}
+
+{{ define "content" }}
+
+<h1>{{.Player.Nickname}}</h1>
+
+{{range .Games}}
+<div>
+  {{$p1 := index $.PlayerMap .Player1}}
+  {{$p2 := index $.PlayerMap .Player2}}
+  {{if eq $p1.ID $.Player.ID}}
+    {{if gt .Player1score .Player2score}}
+      W
+    {{else}}
+      L
+    {{end}}
+    vs. <span>{{$p2.Nickname}} ({{.Player1score}}-{{.Player2score}})</span>
+  {{else}}
+    {{if gt .Player2score .Player1score}}
+      W
+    {{else}}
+      L
+    {{end}}
+    vs. <span>{{$p1.Nickname}} ({{.Player2score}}-{{.Player1score}})</span>
+  {{end}}
+</div>
+{{end}}
+{{ end }}

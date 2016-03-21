@@ -1,0 +1,12 @@
+{{ define "title" }}Register{{ end }}
+{{ define "content" }}
+<h1>Register</h1>
+
+<form action="/save/register" method="POST">
+  <input id="email" name="email" type="email" placeholder="Email" />
+  <input id="password" name="password" type="password" placeholder="Password" />
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
+{{ end }}

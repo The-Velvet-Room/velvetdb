@@ -1,0 +1,25 @@
+version: '2'
+services:
+  web:
+    build: .
+    command: /bin/bash
+    ports:
+     - "3000:3000"
+    volumes:
+     - .:/go/src/app
+    depends_on:
+     - mongo
+    stdin_open: true
+    tty: true
+
+  mongo:
+    image: mongo
+    volumes:
+      - mongo:/data/db
+      - mongoconfig:/data/configdb
+
+volumes:
+  mongo:
+    external: false
+  mongoconfig:
+    external: false

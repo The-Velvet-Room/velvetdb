@@ -1,0 +1,13 @@
+{{ define "title" }}{{.Tournament.Name}}{{ end }}
+
+{{ define "content" }}
+  <h1>{{.Tournament.Name}}</h1>
+
+  {{range .Games}}
+    {{$p1 := index $.PlayerMap .Player1}}
+    {{$p2 := index $.PlayerMap .Player2}}
+    <div>
+      {{$p1.Nickname}} vs {{$p2.Nickname}} ({{.Player1score}} - {{.Player2score}})
+    </div>
+  {{end}}
+{{ end }}

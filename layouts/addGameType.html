@@ -1,0 +1,11 @@
+{{ define "title" }}Add Game Type{{ end }}
+{{ define "content" }}
+<h1>Add Game Type</h1>
+
+<form action="/save/addgametype" method="POST">
+  <input id="name" name="name" placeholder="Name" />
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
+{{ end }}

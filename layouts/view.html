@@ -1,0 +1,12 @@
+{{ define "title" }}Rankings{{ end }}
+{{ define "content" }}
+<h1>Players</h1>
+
+<div>
+  <ol>
+    {{range .}}
+    <li><a href="/player/{{.ID}}">{{.Name}}</a> - {{.Rank}}</li>
+    {{end}}
+  </ol>
+</div>
+{{ end }}

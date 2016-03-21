@@ -1,0 +1,40 @@
+{{ define "title" }}Add Tournament Match{{ end }}
+{{ define "content" }}
+<h1>{{.Tournament.Name}}</h1>
+<h3>Match {{.MatchNumber}} of {{.MatchCount}}</h3>
+
+<form action="/save/addtournamentmatch/{{.Tournament.ID.Hex}}" method="POST">
+  <input type="hidden" name="match" value="{{.Match.Id}}" />
+  <div>
+    <input type="radio" name="player1" value="new" checked> {{.Match.PlayerOne.Name}}
+    </input>
+    <input type="radio" name="player1" value="select">
+    <select name="player1select">
+      {{range .Players}}
+      <option value="{{ .ID.Hex }}">{{ .Nickname }}</option>
+      {{end}}
+    </select>
+    </input>
+    <label for="player1score">Score</label>
+    <input id="player1score" name="player1score" value="{{.Match.PlayerOneScore}}" />
+  </div>
+
+  <div>
+    <input type="radio" name="player2" value="new" checked> {{.Match.PlayerTwo.Name}}
+    </input>
+    <input type="radio" name="player2" value="select">
+    <select name="player2select">
+      {{range .Players}}
+      <option value="{{ .ID.Hex }}">{{ .Nickname }}</option>
+      {{end}}
+    </select>
+    </input>
+    <label for="player2score">Score</label>
+    <input id="player2score" name="player2score" value="{{.Match.PlayerTwoScore}}" />
+  </div>
+
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
+{{ end }}

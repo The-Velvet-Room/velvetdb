@@ -1,0 +1,17 @@
+{{ define "title" }}Add Tournament{{ end }}
+{{ define "content" }}
+<h1>Add Tournament</h1>
+
+<form action="/save/addtournament" method="POST">
+  <input id="name" name="name" placeholder="Name" />
+  <select id="gametype" name="gametype">
+    {{range .GameTypes}}
+    <option value="{{ .ID.Hex }}">{{ .Name }}</option>
+    {{end}}
+  </select>
+  <input id="url" name="url" placeholder="Challonge Url" />
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
+{{ end }}
