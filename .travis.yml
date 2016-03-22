@@ -1,0 +1,28 @@
+language: go
+
+env:
+  global:
+    - COMMIT=${TRAVIS_COMMIT::8}
+
+go:
+  - 1.6
+
+sudo: required
+
+services:
+  - docker
+
+before_script:
+  - go vet ./...
+  - go test -v ./...
+
+after_success:
+  - if [ "$TRAVIS_PULL_REQUEST" == "true" || TRAVIS_BRANCH != "master" ];
+    then exit 0;
+    fi
+  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - export REPO=thevelvetroom/velvetdb
+  - docker build -f Dockerfile -t $REPO:$COMMIT .
+  - docker tag $REPO:$COMMIT $REPO:latest
+  - docker tag $REPO:$COMMIT $REPO:travis-$TRAVIS_BUILD_NUMBER
+  - docker push $REPO
