@@ -102,45 +102,6 @@ func addGameHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "addGame", data)
 }
 
-func testBulkHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := mgo.Dial("localhost")
-	if err != nil {
-		panic(err)
-	}
-	defer session.Close()
-	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	gc := getGameCollection(session)
-
-	bulk := gc.Bulk()
-	player1 := bson.ObjectIdHex("56e20beedbd03b5fcc642772")
-	player2 := bson.ObjectIdHex("56e20c11dbd03b5fcc642778")
-	gametype := bson.ObjectIdHex("56e0ce10903e6dc358d25d8c")
-
-	for index := 0; index < 5000; index++ {
-		p1score := rand.Intn(3)
-		p2score := rand.Intn(2)
-		if p1score != 2 {
-			p2score = 2
-		}
-		bulk.Insert(Game{
-			ID:           bson.NewObjectId(),
-			GameType:     gametype,
-			Player1:      player1,
-			Player2:      player2,
-			Player1score: p1score,
-			Player2score: p2score,
-		})
-	}
-
-	result, err := bulk.Run()
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println("modified:", result.Modified)
-	}
-}
-
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	session := dataStore.GetSession()
 	defer session.Close()
@@ -217,8 +178,6 @@ func main() {
 	r.HandleFunc("/save/addtournament", isAdminMiddleware(saveTournamentHandler))
 	r.HandleFunc("/save/addtournamentmatch/{tournament:[a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchHandler))
 	r.HandleFunc("/tournament/{tournament:[a-zA-Z0-9]+}", viewTournamentHandler)
-
-	r.HandleFunc("/testbulk", testBulkHandler)
 
 	// auth
 	r.HandleFunc("/register", isAdminMiddleware(registerUserHandler))
