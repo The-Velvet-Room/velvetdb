@@ -263,7 +263,6 @@ func saveTournamentMatchHandler(w http.ResponseWriter, r *http.Request) {
 func fetchChallongeMatches(url string) []*challonge.Match {
 	client := challonge.New(siteConfiguration.ChallongeDevUsername, siteConfiguration.ChallongeApiKey)
 	hash := parseChallongeURL(url)
-	fmt.Println(siteConfiguration.ChallongeDevUsername, siteConfiguration.ChallongeApiKey, hash)
 	tourneyData, err := client.NewTournamentRequest(hash).WithMatches().WithParticipants().Get()
 	if err != nil {
 		fmt.Println(err)
