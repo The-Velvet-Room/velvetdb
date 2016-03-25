@@ -111,7 +111,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var result Player
 	for players.Next(&result) {
-		playerDict[result.ID] = &EloDict{Rank: 1000, Name: result.Nickname, ID: result.ID.Hex()}
+		playerDict[result.ID] = &EloDict{Rank: 1000, Player: result}
 	}
 
 	gameSession := getGameCollection(session)
@@ -168,7 +168,7 @@ func main() {
 		http.FileServer(http.Dir("assets/"))))
 
 	r.HandleFunc("/", viewHandler)
-	r.HandleFunc("/player/{player:[a-zA-Z0-9]+}", playerViewHandler)
+	r.HandleFunc("/player/{playerNick:[a-zA-Z0-9]+}", playerViewHandler)
 	r.HandleFunc("/addgametype", isAdminMiddleware(addGameTypeHandler))
 	r.HandleFunc("/addgame", isAdminMiddleware(addGameHandler))
 	r.HandleFunc("/addtournament", isAdminMiddleware(addTournamentHandler))

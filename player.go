@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
@@ -11,15 +13,18 @@ import (
 
 type Player struct {
 	ID         bson.ObjectId `bson:"_id,omitempty"`
+	Nickname   string
 	Tag        string
 	Aliases    []string
-	Nickname   string
-	URLStub    string
+	Image      string
+	URLPath    string
 	FirstName  string
 	LastName   string
 	Facts      []string
 	Characters []string
 }
+
+var alphanumeric = regexp.MustCompile("[^A-Za-z0-9]+")
 
 func getPlayerCollection(session *mgo.Session) *mgo.Collection {
 	return session.DB("test").C("players")
@@ -29,6 +34,18 @@ func addPlayer(session *mgo.Session, player Player) bson.ObjectId {
 	c := getPlayerCollection(session)
 	if !player.ID.Valid() {
 		player.ID = bson.NewObjectId()
+	}
+	if player.URLPath == "" {
+		player.URLPath = strings.ToLower(alphanumeric.ReplaceAllString(player.Nickname, ""))
+		if player.URLPath == "" {
+			player.URLPath = player.ID.Hex()
+		} else {
+			_, err := fetchPlayerByURLPath(session, player.URLPath)
+			// if we find a player, set the URLPath to the id
+			if err == nil {
+				player.URLPath = player.ID.Hex()
+			}
+		}
 	}
 	saveErr := c.Insert(player)
 	if saveErr != nil {
@@ -48,6 +65,27 @@ func fetchPlayer(session *mgo.Session, id bson.ObjectId) (*Player, error) {
 	return player, nil
 }
 
+func fetchPlayerByNickname(session *mgo.Session, nickname string) (*Player, error) {
+	c := getPlayerCollection(session)
+	var player *Player
+	err := c.Find(bson.M{"nickname": nickname}).One(&player)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return player, nil
+}
+
+func fetchPlayerByURLPath(session *mgo.Session, urlpath string) (*Player, error) {
+	c := getPlayerCollection(session)
+	var player *Player
+	err := c.Find(bson.M{"urlpath": urlpath}).One(&player)
+	if err != nil {
+		return nil, err
+	}
+	return player, nil
+}
+
 func fetchPlayers(session *mgo.Session) []Player {
 	c := getPlayerCollection(session)
 	playerIter := c.Find(nil).Sort("nickname").Iter()
@@ -62,18 +100,12 @@ func fetchPlayers(session *mgo.Session) []Player {
 
 func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	playerID := vars["player"]
+	playerNick := vars["playerNick"]
 
-	if !bson.IsObjectIdHex(playerID) {
-		http.NotFound(w, r)
-		return
-	}
 	session := dataStore.GetSession()
 	defer session.Close()
 
-	bsonPlayerID := bson.ObjectIdHex(playerID)
-
-	player, err := fetchPlayer(session, bsonPlayerID)
+	player, err := fetchPlayerByURLPath(session, playerNick)
 	if err == mgo.ErrNotFound {
 		http.NotFound(w, r)
 		return
@@ -85,7 +117,7 @@ func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 		playerMap[p.ID] = p
 	}
 
-	games := fetchGamesForPlayer(session, bsonPlayerID)
+	games := fetchGamesForPlayer(session, player.ID)
 
 	data := struct {
 		Player    *Player

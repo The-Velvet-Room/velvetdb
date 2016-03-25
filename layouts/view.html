@@ -5,7 +5,7 @@
 <div>
   <ol>
     {{range .}}
-    <li><a href="/player/{{.ID}}">{{.Name}}</a> - {{.Rank}}</li>
+    <li><a href="/player/{{.Player.URLPath}}">{{.Player.Nickname}}</a> - {{.Rank}}</li>
     {{end}}
   </ol>
 </div>

@@ -7,9 +7,8 @@ type Elo struct {
 }
 
 type EloDict struct {
-	ID   string
+	Player Player
 	Rank int
-	Name string
 }
 
 type ByRank []*EloDict
@@ -20,7 +19,7 @@ func (a ByRank) Less(i, j int) bool {
 	if a[i].Rank != a[j].Rank {
 		return a[i].Rank > a[j].Rank
 	}
-	return a[i].Name < a[j].Name
+	return a[i].Player.Nickname < a[j].Player.Nickname
 }
 
 func (e *Elo) getExpected(a, b int) float64 {
