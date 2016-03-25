@@ -1,0 +1,12 @@
+{{ define "title" }}First Run{{ end }}
+{{ define "content" }}
+<h1>Add your first user</h1>
+
+<form action="/firstrun/save" method="POST">
+  <input id="email" name="email" type="email" placeholder="Email" />
+  <input id="password" name="password" type="password" placeholder="Password" />
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
+{{ end }}

@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"math/rand"
 	"net/http"
 	"path/filepath"
 	"sort"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/oxtoacart/bpool"
@@ -178,6 +176,10 @@ func main() {
 	r.HandleFunc("/save/addtournament", isAdminMiddleware(saveTournamentHandler))
 	r.HandleFunc("/save/addtournamentmatch/{tournament:[a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchHandler))
 	r.HandleFunc("/tournament/{tournament:[a-zA-Z0-9]+}", viewTournamentHandler)
+
+	// First run
+	r.HandleFunc("/firstrun", firstRunHandler)
+	r.HandleFunc("/firstrun/save", saveFirstRunHandler)
 
 	// auth
 	r.HandleFunc("/register", isAdminMiddleware(registerUserHandler))
