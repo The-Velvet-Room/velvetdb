@@ -225,7 +225,7 @@ func saveTournamentMatchHandler(w http.ResponseWriter, r *http.Request) {
 	var player1ID bson.ObjectId
 	if player1 == "new" {
 		player1ID = addPlayer(session, Player{
-			Nickname: match.PlayerOne.Name,
+			Nickname: r.FormValue("player1newname"),
 		})
 	} else {
 		player1ID = bson.ObjectIdHex(r.FormValue("player1select"))
@@ -235,7 +235,7 @@ func saveTournamentMatchHandler(w http.ResponseWriter, r *http.Request) {
 	var player2ID bson.ObjectId
 	if player2 == "new" {
 		player2ID = addPlayer(session, Player{
-			Nickname: match.PlayerTwo.Name,
+			Nickname: r.FormValue("player2newname"),
 		})
 	} else {
 		player2ID = bson.ObjectIdHex(r.FormValue("player2select"))

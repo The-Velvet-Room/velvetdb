@@ -50,7 +50,7 @@ func fetchPlayer(session *mgo.Session, id bson.ObjectId) (*Player, error) {
 
 func fetchPlayers(session *mgo.Session) []Player {
 	c := getPlayerCollection(session)
-	playerIter := c.Find(nil).Iter()
+	playerIter := c.Find(nil).Sort("nickname").Iter()
 
 	players := []Player{}
 	var result *Player
