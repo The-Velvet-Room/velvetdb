@@ -6,51 +6,59 @@ import (
 	"strconv"
 	"time"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	r "github.com/dancannon/gorethink"
 )
 
 type Game struct {
-	ID                bson.ObjectId `bson:"_id,omitempty"`
-	Tournament        bson.ObjectId `bson:",omitempty"`
-	TournamentMatchID string
-	GameType          bson.ObjectId
-	Date              time.Time
-	Player1           bson.ObjectId
-	Player2           bson.ObjectId
-	Player1score      int
-	Player2score      int
+	ID                string `gorethink:"id,omitempty"`
+	Tournament        string `gorethink:"tournament,omitempty"`
+	TournamentMatchID string `gorethink:"tournament_match_id"`
+	GameType          string `gorethink:"gametype"`
+	Date              time.Time `gorethink:"date"`
+	Player1           string `gorethink:"player1"`
+	Player2           string `gorethink:"player2"`
+	Player1score      int `gorethink:"player1_score"`
+	Player2score      int`gorethink:"player2_score"`
 }
 
-func getGameCollection(session *mgo.Session) *mgo.Collection {
-	return session.DB("test").C("games")
+func getGameTable() r.Term {
+	return r.Table("games")
 }
 
-func fetchGamesForPlayer(session *mgo.Session, id bson.ObjectId) []Game {
-	c := getGameCollection(session)
-	var result *Game
+func fetchGamesForPlayer(id string) []Game {
+	c, err := getGameTable().Filter(r.Or(
+		r.Row.Field("player1").Eq(id),
+		r.Row.Field("player2").Eq(id),
+	)).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
 	games := []Game{}
-	gameIter := c.Find(bson.M{"$or": []bson.M{bson.M{"player1": id}, bson.M{"player2": id}}}).Iter()
-	for gameIter.Next(&result) {
-		games = append(games, *result)
+	err = c.All(&games)
+	if err != nil {
+		fmt.Println(err)
 	}
 	return games
 }
 
-func fetchGamesForTournament(session *mgo.Session, id bson.ObjectId) []Game {
-	c := getGameCollection(session)
-	var result *Game
+func fetchGamesForTournament(id string) []Game {
+	c, err := getGameTable().Filter(map[string]interface{}{
+		"tournament": id,
+	}).OrderBy("date").Run(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
 	games := []Game{}
-	gameIter := c.Find(bson.M{"tournament": id}).Sort("date").Iter()
-	for gameIter.Next(&result) {
-		games = append(games, *result)
+	err = c.All(&games)
+	if err != nil {
+		fmt.Println(err)
 	}
 	return games
 }
 
-func addGame(session *mgo.Session, game Game) {
-	gc := getGameCollection(session)
-	err := gc.Insert(game)
+func addGame(game Game) {
+	wr, err := getGameTable().Insert(game).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -65,23 +73,18 @@ func saveGameHandler(w http.ResponseWriter, r *http.Request) {
 	player1score, _ := strconv.Atoi(r.FormValue("player1score"))
 	player2score, _ := strconv.Atoi(r.FormValue("player2score"))
 	gameType := r.FormValue("gametype")
-	if player1 == player2 || !bson.IsObjectIdHex(player1) ||
-		!bson.IsObjectIdHex(player2) ||
-		!bson.IsObjectIdHex(gameType) {
+	if player1 == player2 {
 		http.Redirect(w, r, "/", http.StatusBadRequest)
 	}
 
-	c := getGameCollection(session)
-	saveErr := c.Insert(&Game{
-		Player1:      bson.ObjectIdHex(player1),
-		Player2:      bson.ObjectIdHex(player2),
-		GameType:     bson.ObjectIdHex(gameType),
+	addGame(Game{
+		Player1:      player1,
+		Player2:      player2,
+		GameType:     gameType,
 		Player1score: player1score,
 		Player2score: player2score,
 		Date:         time.Now(),
 	})
-	if saveErr != nil {
-		fmt.Println(saveErr)
-	}
+
 	http.Redirect(w, r, "/", http.StatusFound)
 }

@@ -10,8 +10,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/oxtoacart/bpool"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	r "github.com/dancannon/gorethink"
 )
 
 type Page struct {
@@ -58,9 +58,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	email, ok := isLoggedIn(r)
 	var user *User
 	if ok {
-		session := dataStore.GetSession()
-		defer session.Close()
-		user = fetchUserByEmail(session, email)
+		user = fetchUserByEmail(email)
 	} else {
 		user = nil
 	}
@@ -85,7 +83,7 @@ func addGameHandler(w http.ResponseWriter, r *http.Request) {
 	session := dataStore.GetSession()
 	defer session.Close()
 	// get players
-	players := fetchPlayers(session)
+	players := fetchPlayers()
 
 	gameTypes := fetchGameTypes(session)
 
@@ -139,6 +137,13 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "view", ranks)
 }
 
+func initializeTables() {
+	r.TableCreate("players").Run(dataStore.GetSession())
+	r.TableCreate("gametypes").Run(dataStore.GetSession())
+	r.TableCreate("games").Run(dataStore.GetSession())
+	r.TableCreate("tournaments").Run(dataStore.GetSession())
+}
+
 func isAdminMiddleware(next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, ok := isLoggedIn(r)
@@ -152,13 +157,20 @@ func isAdminMiddleware(next func(http.ResponseWriter, *http.Request)) func(http.
 
 func main() {
 	siteConfiguration = getConfiguration()
-	session, err := mgo.Dial(siteConfiguration.MongoConnection)
+	session, err := r.Connect(r.ConnectOpts{
+		Address: siteConfiguration.RethinkConnection,
+		Database: "velvetdb",
+	})
 	if err != nil {
-		panic(err)
+		log.Fatalln(err.Error())
 	}
+	dataStore = &DataStore{session: session}
+
+	initializeTables()
+	initializeSessionStore()
 
 	bufpool = bpool.NewBufferPool(64)
-	dataStore = &DataStore{session: session}
+
 	parseTemplates()
 
 	r := mux.NewRouter()

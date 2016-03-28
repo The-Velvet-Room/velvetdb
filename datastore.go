@@ -1,13 +1,28 @@
 package main
 
 import (
-	"gopkg.in/mgo.v2"
+	"log"
+	r "github.com/dancannon/gorethink"
 )
 
 type DataStore struct {
-	session *mgo.Session
+	session *r.Session
 }
 
-func (ds *DataStore) GetSession() *mgo.Session {
-	return ds.session.Copy()
+func (ds *DataStore) GetSession() *r.Session {
+	return ds.session
+}
+
+func (ds *DataStore) GetID() string {
+	c, err := r.UUID().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var uuid string
+	err = c.One(&uuid)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return uuid
 }

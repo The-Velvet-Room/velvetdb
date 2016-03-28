@@ -5,21 +5,23 @@ import (
 )
 
 func saveFirstRunHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
-
-	registerUser(session, r.FormValue("email"), r.FormValue("password"))
+	registerUser(r.FormValue("email"), r.FormValue("password"))
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func firstRunHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
-	c := getUserCollection(session)
-	num, err := c.Count()
-	if num != 0 && err == nil {
+	var count int
+	c, err := getUserTable().Count().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
+	err = c.One(&count)
+	if err != nil || count != 0 {
+		http.NotFound(w, r)
+		return
+	}
+
 	renderTemplate(w, r, "firstRun", nil)
 }
