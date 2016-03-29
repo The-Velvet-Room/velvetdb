@@ -162,6 +162,7 @@ func main() {
 		http.FileServer(http.Dir("assets/"))))
 
 	r.HandleFunc("/", viewHandler)
+	r.HandleFunc("/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(editPlayerHandler))
 	r.HandleFunc("/player/{playerNick:[a-zA-Z0-9]+}", playerViewHandler)
 	r.HandleFunc("/addplayer", isAdminMiddleware(addPlayerHandler))
 	r.HandleFunc("/addgametype", isAdminMiddleware(addGameTypeHandler))
@@ -169,6 +170,7 @@ func main() {
 	r.HandleFunc("/addtournament", isAdminMiddleware(addTournamentHandler))
 	r.HandleFunc("/save/addgame", isAdminMiddleware(saveGameHandler))
 	r.HandleFunc("/save/addplayer", isAdminMiddleware(savePlayerHandler))
+	r.HandleFunc("/save/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(saveEditPlayerHandler))
 	r.HandleFunc("/save/addgametype", isAdminMiddleware(saveGameTypeHandler))
 	r.HandleFunc("/save/addtournament", isAdminMiddleware(saveTournamentHandler))
 	r.HandleFunc("/save/addtournamentmatch/{tournament:[a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchHandler))

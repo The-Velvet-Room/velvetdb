@@ -131,6 +131,56 @@ func savePlayerHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
+func saveEditPlayerHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	playerNick := vars["playerNick"]
+
+	player, err := fetchPlayerByURLPath(playerNick)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	urlpath := r.FormValue("urlpath")
+	if urlpath != player.URLPath {
+		player, _ := fetchPlayerByURLPath(urlpath)
+		if player != nil {
+			http.Redirect(w, r, "/editplayer/"+playerNick, http.StatusBadRequest)
+			return
+		}
+	}
+
+	_, err = getPlayerTable().Filter(map[string]interface{}{
+		"urlpath": playerNick,
+	}).Update(map[string]interface{}{
+		"nickname": r.FormValue("nickname"),
+		"urlpath":  urlpath,
+	}).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	http.Redirect(w, r, "/player/"+urlpath, http.StatusFound)
+}
+
+func editPlayerHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	playerNick := vars["playerNick"]
+
+	player, err := fetchPlayerByURLPath(playerNick)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Player *Player
+	}{
+		player,
+	}
+
+	renderTemplate(w, r, "editPlayer", data)
+}
+
 func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	playerNick := vars["playerNick"]
