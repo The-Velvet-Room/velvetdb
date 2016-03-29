@@ -6,19 +6,19 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gorilla/mux"
 	r "github.com/dancannon/gorethink"
+	"github.com/gorilla/mux"
 )
 
 type Player struct {
-	ID         string `gorethink:"id,omitempty"`
-	Nickname   string `gorethink:"nickname"`
-	Tag        string `gorethink:"tag"`
+	ID         string   `gorethink:"id,omitempty"`
+	Nickname   string   `gorethink:"nickname"`
+	Tag        string   `gorethink:"tag"`
 	Aliases    []string `gorethink:"aliases"`
-	Image      string `gorethink:"image"`
-	URLPath    string `gorethink:"urlpath"`
-	FirstName  string `gorethink:"first_name"`
-	LastName   string `gorethink:"last_name"`
+	Image      string   `gorethink:"image"`
+	URLPath    string   `gorethink:"urlpath"`
+	FirstName  string   `gorethink:"first_name"`
+	LastName   string   `gorethink:"last_name"`
 	Facts      []string `gorethink:"facts"`
 	Characters []string `gorethink:"characters"`
 }

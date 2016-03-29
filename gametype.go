@@ -31,11 +31,12 @@ func fetchGameTypes() []GameType {
 	return gameTypes
 }
 
-func addGameType(gameType GameType) {
+func addGameType(gameType GameType) string {
 	wr, err := getGameTypeTable().Insert(gameType).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
 	}
+	return wr.GeneratedKeys[0]
 }
 
 func addGameTypeHandler(w http.ResponseWriter, r *http.Request) {

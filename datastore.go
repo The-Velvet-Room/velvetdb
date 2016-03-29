@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	r "github.com/dancannon/gorethink"
 )
 

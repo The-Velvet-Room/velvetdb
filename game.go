@@ -10,15 +10,15 @@ import (
 )
 
 type Game struct {
-	ID                string `gorethink:"id,omitempty"`
-	Tournament        string `gorethink:"tournament,omitempty"`
-	TournamentMatchID string `gorethink:"tournament_match_id"`
-	GameType          string `gorethink:"gametype"`
+	ID                string    `gorethink:"id,omitempty"`
+	Tournament        string    `gorethink:"tournament,omitempty"`
+	TournamentMatchID string    `gorethink:"tournament_match_id"`
+	GameType          string    `gorethink:"gametype"`
 	Date              time.Time `gorethink:"date"`
-	Player1           string `gorethink:"player1"`
-	Player2           string `gorethink:"player2"`
-	Player1score      int `gorethink:"player1_score"`
-	Player2score      int`gorethink:"player2_score"`
+	Player1           string    `gorethink:"player1"`
+	Player2           string    `gorethink:"player2"`
+	Player1score      int       `gorethink:"player1_score"`
+	Player2score      int       `gorethink:"player2_score"`
 }
 
 func getGameTable() r.Term {
@@ -46,6 +46,7 @@ func fetchGamesForTournament(id string) []Game {
 	c, err := getGameTable().Filter(map[string]interface{}{
 		"tournament": id,
 	}).OrderBy("date").Run(dataStore.GetSession())
+	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -57,17 +58,32 @@ func fetchGamesForTournament(id string) []Game {
 	return games
 }
 
-func addGame(game Game) {
+func addGame(game Game) string {
 	wr, err := getGameTable().Insert(game).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
 	}
+	return wr.GeneratedKeys[0]
+}
+
+func addGameHandler(w http.ResponseWriter, r *http.Request) {
+	// get players
+	players := fetchPlayers()
+
+	gameTypes := fetchGameTypes()
+
+	data := struct {
+		Players   []Player
+		GameTypes []GameType
+	}{
+		players,
+		gameTypes,
+	}
+
+	renderTemplate(w, r, "addGame", data)
 }
 
 func saveGameHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
-
 	player1 := r.FormValue("player1")
 	player2 := r.FormValue("player2")
 	player1score, _ := strconv.Atoi(r.FormValue("player1score"))

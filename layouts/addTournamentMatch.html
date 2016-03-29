@@ -3,7 +3,7 @@
 <h1>{{.Tournament.Name}}</h1>
 <h3>Match {{.MatchNumber}} of {{.MatchCount}}</h3>
 
-<form action="/save/addtournamentmatch/{{.Tournament.ID.Hex}}" method="POST">
+<form action="/save/addtournamentmatch/{{.Tournament.ID}}" method="POST">
   <input type="hidden" name="match" value="{{.Match.Id}}" />
   <table class="table">
     <thead>
@@ -31,7 +31,7 @@
             </span>
             <select class="form-control" name="player1select">
               {{range .Players}}
-              <option value="{{ .ID.Hex }}">{{ .Nickname }}</option>
+              <option value="{{ .ID }}">{{ .Nickname }}</option>
               {{end}}
             </select>
           </div>
@@ -58,7 +58,7 @@
             </span>
             <select class="form-control" name="player2select">
               {{range .Players}}
-              <option value="{{ .ID.Hex }}">{{ .Nickname }}</option>
+              <option value="{{ .ID }}">{{ .Nickname }}</option>
               {{end}}
             </select>
           </div>

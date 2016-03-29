@@ -8,10 +8,9 @@ import (
 	"path/filepath"
 	"sort"
 
+	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/mux"
 	"github.com/oxtoacart/bpool"
-	"gopkg.in/mgo.v2/bson"
-	r "github.com/dancannon/gorethink"
 )
 
 type Page struct {
@@ -79,45 +78,25 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	buf.WriteTo(w)
 }
 
-func addGameHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
-	// get players
+func viewHandler(w http.ResponseWriter, r *http.Request) {
 	players := fetchPlayers()
 
-	gameTypes := fetchGameTypes(session)
+	playerDict := make(map[string]*EloDict)
 
-	data := struct {
-		Players   []Player
-		GameTypes []GameType
-	}{
-		players,
-		gameTypes,
+	for _, p := range players {
+		playerDict[p.ID] = &EloDict{Rank: 1000, Player: p}
 	}
 
-	renderTemplate(w, r, "addGame", data)
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
-
-	c := getPlayerCollection(session)
-	players := c.Find(nil).Iter()
-
-	playerDict := make(map[bson.ObjectId]*EloDict)
-
-	var result Player
-	for players.Next(&result) {
-		playerDict[result.ID] = &EloDict{Rank: 1000, Player: result}
+	c, err := getGameTable().OrderBy("date").Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
 	}
 
-	gameSession := getGameCollection(session)
-	games := gameSession.Find(nil).Sort("date").Iter()
 	e := &Elo{k: 32}
 
 	var gameResult Game
-	for games.Next(&gameResult) {
+	for c.Next(&gameResult) {
 		expectedScore1 := e.getExpected(playerDict[gameResult.Player1].Rank, playerDict[gameResult.Player2].Rank)
 		expectedScore2 := e.getExpected(playerDict[gameResult.Player2].Rank, playerDict[gameResult.Player1].Rank)
 
@@ -138,10 +117,13 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func initializeTables() {
+	r.DBCreate("velvetdb").Run(dataStore.GetSession())
+	r.TableCreate("users").Run(dataStore.GetSession())
 	r.TableCreate("players").Run(dataStore.GetSession())
 	r.TableCreate("gametypes").Run(dataStore.GetSession())
 	r.TableCreate("games").Run(dataStore.GetSession())
 	r.TableCreate("tournaments").Run(dataStore.GetSession())
+	r.TableCreate("sessions").Run(dataStore.GetSession())
 }
 
 func isAdminMiddleware(next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
@@ -158,7 +140,7 @@ func isAdminMiddleware(next func(http.ResponseWriter, *http.Request)) func(http.
 func main() {
 	siteConfiguration = getConfiguration()
 	session, err := r.Connect(r.ConnectOpts{
-		Address: siteConfiguration.RethinkConnection,
+		Address:  siteConfiguration.RethinkConnection,
 		Database: "velvetdb",
 	})
 	if err != nil {
