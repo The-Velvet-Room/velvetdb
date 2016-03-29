@@ -155,6 +155,9 @@ func saveEditPlayerHandler(w http.ResponseWriter, r *http.Request) {
 	}).Update(map[string]interface{}{
 		"nickname": r.FormValue("nickname"),
 		"urlpath":  urlpath,
+		"tag": r.FormValue("tag"),
+		"first_name": r.FormValue("firstname"),
+		"last_name": r.FormValue("lastname"),
 	}).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
