@@ -178,6 +178,9 @@ func main() {
 	r.HandleFunc("/firstrun", firstRunHandler)
 	r.HandleFunc("/firstrun/save", saveFirstRunHandler)
 
+	// Faceoff
+	r.HandleFunc("/faceoff", faceoffHandler)
+
 	// auth
 	r.HandleFunc("/register", isAdminMiddleware(registerUserHandler))
 	r.HandleFunc("/login", loginUserHandler)

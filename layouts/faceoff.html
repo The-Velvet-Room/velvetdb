@@ -1,0 +1,51 @@
+{{ define "title" }}Faceoff{{ end }}
+{{ define "content" }}
+<h1>Faceoff</h1>
+
+<form action="/faceoff" method="GET">
+  <label for="p1">Player 1</label>
+  <select id="p1" name="p1">
+    {{$p1 := .Player1.ID}}
+    {{$p2 := .Player2.ID}}
+    {{range .Players}}
+    <option value="{{ .URLPath }}"
+      {{ if eq $p1 .ID }}selected{{end}}
+    >{{ .Nickname }}</option>
+    {{end}}
+  </select>
+  <label for="p2">Player 2</label>
+  <select id="p2" name="p2">
+    {{range .Players}}
+    <option value="{{ .URLPath }}"
+      {{ if eq $p2 .ID }}selected{{end}}
+    >{{ .Nickname }}</option>
+    {{end}}
+  </select>
+  <div>
+    <input type="submit" value="Submit">
+  </div>
+</form>
+{{ with .Games }}
+  {{ range . }}
+    <div>
+    {{if eq $.Player1.ID .Player1}}
+      {{if gt .Player1score .Player2score }}
+        <span>{{$.Player1.Nickname}}</span>
+        <span>({{ .Player1score }} - {{ .Player2score }})</span>
+      {{else}}
+        <span>{{$.Player2.Nickname}}</span>
+        <span>({{ .Player2score }} - {{ .Player1score }})</span>
+      {{end}}
+    {{else}}
+      {{if gt .Player1score .Player2score }}
+        <span>{{$.Player2.Nickname}}</span>
+        <span>({{ .Player1score }} - {{ .Player2score }})</span>
+      {{else}}
+        <span>{{$.Player1.Nickname}}</span>
+        <span>({{ .Player2score }} - {{ .Player1score }})</span>
+      {{end}}
+    {{end}}
+    </div>
+  {{ end }}
+{{ end }}
+{{ end }}

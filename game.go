@@ -42,6 +42,23 @@ func fetchGamesForPlayer(id string) []Game {
 	return games
 }
 
+func fetchGamesForPlayers(p1 string, p2 string) *[]Game {
+	c, err := getGameTable().Filter(r.Or(
+		r.Row.Field("player1").Eq(p1).And(r.Row.Field("player2").Eq(p2)),
+		r.Row.Field("player1").Eq(p2).And(r.Row.Field("player2").Eq(p1)),
+	)).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
+	games := []Game{}
+	err = c.All(&games)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return &games
+}
+
 func fetchGamesForTournament(id string) []Game {
 	c, err := getGameTable().Filter(map[string]interface{}{
 		"tournament": id,
