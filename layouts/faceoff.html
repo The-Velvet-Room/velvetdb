@@ -26,6 +26,15 @@
   </div>
 </form>
 {{ with .Games }}
+  <div>
+    <span>Sets: </span>
+    <span>{{$.Player1Sets}} - {{$.Player2Sets}}</span>
+  </div>
+  <div>
+    <span>Games: </span>
+    <span>{{$.Player1Games}} - {{$.Player2Games}}</span>
+  </div>
+  <p>
   {{ range . }}
     <div>
     {{if eq $.Player1.ID .Player1}}
@@ -45,7 +54,9 @@
         <span>({{ .Player2score }} - {{ .Player1score }})</span>
       {{end}}
     {{end}}
+    <span>{{.Date.Month}} {{.Date.Day}}, {{.Date.Year}}</span>
     </div>
   {{ end }}
+  </p>
 {{ end }}
 {{ end }}

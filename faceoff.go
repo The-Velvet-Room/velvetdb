@@ -11,6 +11,7 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 	var games *[]Game
 	var player1 Player
 	var player2 Player
+	player1sets, player2sets, player1games, player2games := 0, 0, 0, 0
 	if p1 != "" && p2 != "" {
 		for _, pl := range p {
 			if p1 == pl.URLPath {
@@ -21,17 +22,34 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		games = fetchGamesForPlayers(player1.ID, player2.ID)
+		for _, g := range *games {
+			player1games += g.Player1score
+			player2games += g.Player2score
+			if g.Player1score > g.Player2score {
+				player1sets++
+			} else {
+				player2sets++
+			}
+		}
 	}
 	data := struct {
 		Players []Player
 		Games   *[]Game
 		Player1 *Player
 		Player2 *Player
+		Player1Sets int
+		Player2Sets int
+		Player1Games int
+		Player2Games int
 	}{
 		p,
 		games,
 		&player1,
 		&player2,
+		player1sets,
+		player2sets,
+		player1games,
+		player2games,
 	}
 	renderTemplate(w, r, "faceoff", data)
 }
