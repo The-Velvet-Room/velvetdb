@@ -121,6 +121,16 @@ func fetchPlayers() []Player {
 	return players
 }
 
+func addPlayerHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, "addPlayer", nil)
+}
+
+func savePlayerHandler(w http.ResponseWriter, r *http.Request) {
+	n := r.FormValue("nickname")
+	addPlayer(Player{Nickname: n})
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
 func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	playerNick := vars["playerNick"]

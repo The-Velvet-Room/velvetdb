@@ -1,0 +1,12 @@
+{{ define "title" }}Add Player{{ end }}
+{{ define "content" }}
+<h1>Add Player</h1>
+
+<form action="/save/addplayer" method="POST">
+  <label for="nickname">Nickname</label>
+  <input type="text" name="nickname" id="nickname">
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
+{{ end }}
