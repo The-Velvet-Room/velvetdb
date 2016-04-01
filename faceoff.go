@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"fmt"
 )
 
 func faceoffHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,12 +24,23 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		games = fetchGamesForPlayers(player1.ID, player2.ID)
 		for _, g := range *games {
-			player1games += g.Player1score
-			player2games += g.Player2score
-			if g.Player1score > g.Player2score {
-				player1sets++
+			if g.Player1 == player1.ID {
+				player1games += g.Player1score
+				player2games += g.Player2score
+				if g.Player1score > g.Player2score {
+					player1sets++
+				} else {
+					player2sets++
+				}
 			} else {
-				player2sets++
+				fmt.Println("test")
+				player2games += g.Player1score
+				player1games += g.Player2score
+				if g.Player1score > g.Player2score {
+					player2sets++
+				} else {
+					player1sets++
+				}
 			}
 		}
 	}
