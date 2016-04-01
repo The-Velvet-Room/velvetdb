@@ -33,7 +33,6 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 					player2sets++
 				}
 			} else {
-				fmt.Println("test")
 				player2games += g.Player1score
 				player1games += g.Player2score
 				if g.Player1score > g.Player2score {

@@ -4,7 +4,7 @@
 
 <form action="/faceoff" method="GET">
   <label for="p1">Player 1</label>
-  <select id="p1" name="p1">
+  <select id="p1" name="p1" class="form-control">
     {{$p1 := .Player1.ID}}
     {{$p2 := .Player2.ID}}
     {{range .Players}}
@@ -14,7 +14,7 @@
     {{end}}
   </select>
   <label for="p2">Player 2</label>
-  <select id="p2" name="p2">
+  <select id="p2" name="p2" class="form-control">
     {{range .Players}}
     <option value="{{ .URLPath }}"
       {{ if eq $p2 .ID }}selected{{end}}
@@ -22,7 +22,7 @@
     {{end}}
   </select>
   <div>
-    <input type="submit" value="Submit">
+    <button type="submit" class="btn btn-default">Submit</button>
   </div>
 </form>
 {{ with .Games }}
