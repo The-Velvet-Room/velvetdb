@@ -74,6 +74,23 @@ func fetchTournament(id string) (*Tournament, error) {
 	return &t, nil
 }
 
+func fetchTournaments() (*[]Tournament, error) {
+	c, err := getTournamentTable().OrderBy("date_start").Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	var t []Tournament
+	err = c.All(&t)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return &t, nil
+}
+
 func addTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	gameTypes := fetchGameTypes()
 
@@ -209,6 +226,18 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, r, "addTournamentMatch", data)
+}
+
+func viewTournamentsHandler(w http.ResponseWriter, r *http.Request) {
+	t, _ := fetchTournaments()
+
+	data := struct {
+		Tournaments *[]Tournament
+	}{
+		t,
+	}
+
+	renderTemplate(w, r, "tournaments", data)
 }
 
 func saveTournamentMatchHandler(w http.ResponseWriter, r *http.Request) {

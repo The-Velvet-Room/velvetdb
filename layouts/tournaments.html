@@ -1,0 +1,12 @@
+{{ define "title" }}Tournaments{{ end }}
+{{ define "content" }}
+<h1>Tournaments</h1>
+
+<div>
+  <ul>
+  {{range .Tournaments}}
+    <li>{{.Name}}</li>
+  {{end}}
+  </ul>
+</div>
+{{ end }}
