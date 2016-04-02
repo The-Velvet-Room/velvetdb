@@ -41,8 +41,22 @@ func addUser(user User) string {
 	return resp.GeneratedKeys[0]
 }
 
+func updateUserPassword(email string, newPassword string) error {
+	p, err := generatePassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	_, err = getUserTable().Filter(map[string]interface{}{
+		"email": email,
+	}).Update(map[string]interface{}{
+		"password": p,
+	}).RunWrite(dataStore.GetSession())
+
+	return err
+}
+
 func fetchUserByEmail(email string) *User {
-	var user User
 	c, err := getUserTable().Filter(map[string]interface{}{
 		"email": email,
 	}).Run(dataStore.GetSession())
@@ -51,12 +65,21 @@ func fetchUserByEmail(email string) *User {
 		fmt.Println(err)
 		return nil
 	}
+	var user User
 	err = c.One(&user)
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
 	return &user
+}
+
+func generatePassword(password string) (string, error) {
+	p, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(p), nil
 }
 
 func validateUser(email string, password string) bool {
@@ -71,13 +94,13 @@ func validateUser(email string, password string) bool {
 func registerUser(email string, password string) {
 	user := fetchUserByEmail(email)
 	if user == nil {
-		password, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		p, err := generatePassword(password)
 		if err != nil {
 			fmt.Println(err)
 		} else {
 			addUser(User{
 				Email:    email,
-				Password: string(password),
+				Password: p,
 			})
 		}
 	}
@@ -120,9 +143,32 @@ func saveLoginUserHandler(w http.ResponseWriter, r *http.Request) {
 func saveLogoutUserHandler(w http.ResponseWriter, r *http.Request) {
 	storeSession, _ := sessionStore.Get(r, "usersession")
 	delete(storeSession.Values, "username")
-	storeSession.Options.MaxAge = -1
 	_ = storeSession.Save(r, w)
 	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func saveChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	currentPass := r.FormValue("currentPass")
+	newPass := r.FormValue("newPass")
+	newPassAgain := r.FormValue("newPassAgain")
+	data := struct { Message string } { "Password changed successfully." }
+	if (newPass != newPassAgain) {
+		data.Message = "The new passwords didn't match."
+		renderTemplate(w, r, "userProfile", data)
+		return
+	}
+	email, _ := isLoggedIn(r)
+	if validateUser(email, currentPass) {
+		err := updateUserPassword(email, newPass)
+		if err != nil {
+			data.Message = "An error occurred. Please contact an administrator."
+			fmt.Println(err)
+		}
+	} else {
+		data.Message = "The password did not match the password for this account."
+	}
+
+	renderTemplate(w, r, "userProfile", data)
 }
 
 func registerUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -131,4 +177,8 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "login", nil)
+}
+
+func userProfileHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, "userProfile", nil)
 }

@@ -186,11 +186,13 @@ func main() {
 	r.HandleFunc("/faceoff", faceoffHandler)
 
 	// auth
+	r.HandleFunc("/profile", isAdminMiddleware(userProfileHandler))
 	r.HandleFunc("/register", isAdminMiddleware(registerUserHandler))
 	r.HandleFunc("/login", loginUserHandler)
 	r.HandleFunc("/save/login", saveLoginUserHandler)
 	r.HandleFunc("/save/logout", saveLogoutUserHandler)
 	r.HandleFunc("/save/register", isAdminMiddleware(saveRegisterUserHandler))
+	r.HandleFunc("/save/changepassword", isAdminMiddleware(saveChangePasswordHandler))
 
 	fmt.Println("We're up and running!")
 
