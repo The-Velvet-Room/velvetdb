@@ -150,7 +150,7 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/tournament/"+id, http.StatusFound)
 }
 
-func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
+func addTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tournamentID := vars["tournament"]
 
@@ -161,29 +161,7 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.LastMatchID == "" {
-		games := fetchGamesForTournament(t.ID)
-		players := fetchPlayers()
-		playerMap := make(map[string]Player)
-		for _, p := range players {
-			playerMap[p.ID] = p
-		}
-
-		data := struct {
-			Tournament *Tournament
-			Games      []Game
-			PlayerMap  map[string]Player
-		}{
-			t,
-			games,
-			playerMap,
-		}
-
-		renderTemplate(w, r, "viewTournament", data)
-		return
-	}
-
-	if _, ok := isLoggedIn(r); !ok {
-		http.NotFound(w, r)
+		http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
 		return
 	}
 
@@ -213,16 +191,7 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	// we've loaded all matches
 	if match == nil {
 		updateTournamentLastID(t.ID, "")
-		games := fetchGamesForTournament(t.ID)
-		data := struct {
-			Tournament *Tournament
-			Games      []Game
-		}{
-			t,
-			games,
-		}
-
-		renderTemplate(w, r, "viewTournament", data)
+		http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
 		return
 	}
 
@@ -247,6 +216,45 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, r, "addTournamentMatch", data)
+}
+
+func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if t.LastMatchID != "" {
+		if _, ok := isLoggedIn(r); ok {
+			http.Redirect(w, r, "/tournament/addmatches/"+t.ID, http.StatusFound)
+		} else {
+			http.NotFound(w, r)
+		}
+		return
+	}
+
+	games := fetchGamesForTournament(t.ID)
+	players := fetchPlayers()
+	playerMap := make(map[string]Player)
+	for _, p := range players {
+		playerMap[p.ID] = p
+	}
+
+	data := struct {
+		Tournament *Tournament
+		Games      []Game
+		PlayerMap  map[string]Player
+	}{
+		t,
+		games,
+		playerMap,
+	}
+
+	renderTemplate(w, r, "viewTournament", data)
 }
 
 func viewTournamentsHandler(w http.ResponseWriter, r *http.Request) {
