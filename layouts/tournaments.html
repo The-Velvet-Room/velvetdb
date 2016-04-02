@@ -6,7 +6,7 @@
   {{if .SelectedGameType}}
     <ul>
     {{range .Tournaments}}
-      <li>{{.Name}}</li>
+      <li><a href="/tournament/{{.ID}}">{{.Name}}</a> - {{.DateStart.Month}} {{.DateStart.Day}}, {{.DateStart.Year}}</li>
     {{end}}
     </ul>
   {{else}}

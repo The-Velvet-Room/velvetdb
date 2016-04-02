@@ -19,6 +19,10 @@ type Page struct {
 	Data             interface{}
 }
 
+type key int
+
+const UserKey key = 0
+
 var siteConfiguration *Configuration
 var templates map[string]*template.Template
 var bufpool *bpool.BufferPool
@@ -55,12 +59,9 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	buf := bufpool.Get()
 	defer bufpool.Put(buf)
 
-	email, ok := isLoggedIn(r)
 	var user *User
-	if ok {
+	if email, ok := isLoggedIn(r); ok {
 		user = fetchUserByEmail(email)
-	} else {
-		user = nil
 	}
 
 	page := Page{
@@ -82,11 +83,11 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	players := fetchPlayers()
-
-	playerDict := make(map[string]*EloDict)
+	playerDict := make(map[string]Player)
+	rankDict := make(map[string]*EloDict)
 
 	for _, p := range players {
-		playerDict[p.ID] = &EloDict{Rank: 1000, Player: p}
+		playerDict[p.ID] = p
 	}
 
 	c, err := getGameTable().OrderBy("date").Run(dataStore.GetSession())
@@ -99,18 +100,26 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 	var gameResult Game
 	for c.Next(&gameResult) {
-		expectedScore1 := e.getExpected(playerDict[gameResult.Player1].Rank, playerDict[gameResult.Player2].Rank)
-		expectedScore2 := e.getExpected(playerDict[gameResult.Player2].Rank, playerDict[gameResult.Player1].Rank)
+		if _, ok := rankDict[gameResult.Player1]; !ok {
+			rankDict[gameResult.Player1] = NewEloDict(playerDict[gameResult.Player1])
+		}
+		if _, ok := rankDict[gameResult.Player2]; !ok {
+			rankDict[gameResult.Player2] = NewEloDict(playerDict[gameResult.Player2])
+		}
+		expectedScore1 := e.getExpected(rankDict[gameResult.Player1].Rank, rankDict[gameResult.Player2].Rank)
+		expectedScore2 := e.getExpected(rankDict[gameResult.Player2].Rank, rankDict[gameResult.Player1].Rank)
 
 		player1results := float64(gameResult.Player1score) / float64(gameResult.Player1score+gameResult.Player2score)
 
-		playerDict[gameResult.Player1].Rank = e.updateRating(expectedScore1, player1results, playerDict[gameResult.Player1].Rank)
-		playerDict[gameResult.Player2].Rank = e.updateRating(expectedScore2, 1-player1results, playerDict[gameResult.Player2].Rank)
+		rankDict[gameResult.Player1].Rank = e.updateRating(expectedScore1, player1results, rankDict[gameResult.Player1].Rank)
+		rankDict[gameResult.Player2].Rank = e.updateRating(expectedScore2, 1-player1results, rankDict[gameResult.Player2].Rank)
 	}
 
-	ranks := []*EloDict{}
-	for _, v := range playerDict {
-		ranks = append(ranks, v)
+	ranks := make([]*EloDict, len(rankDict))
+	idx := 0
+	for _, v := range rankDict {
+		ranks[idx] = v
+		idx++
 	}
 
 	sort.Sort(ByRank(ranks))
@@ -197,8 +206,8 @@ func main() {
 	r.HandleFunc("/save/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(saveEditPlayerHandler))
 	r.HandleFunc("/save/addgametype", isAdminMiddleware(saveGameTypeHandler))
 	r.HandleFunc("/save/addtournament", isAdminMiddleware(saveTournamentHandler))
-	r.HandleFunc("/save/addtournamentmatch/{tournament:[a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchHandler))
-	r.HandleFunc("/tournament/{tournament:[a-zA-Z0-9]+}", viewTournamentHandler)
+	r.HandleFunc("/save/addtournamentmatch/{tournament:[-a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchHandler))
+	r.HandleFunc("/tournament/{tournament:[-a-zA-Z0-9]+}", viewTournamentHandler)
 
 	// First run
 	r.HandleFunc("/firstrun", firstRunHandler)

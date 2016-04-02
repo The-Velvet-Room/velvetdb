@@ -3,7 +3,9 @@
 {{ define "content" }}
 
 <h1><span style="color: #444">{{.Player.Tag}} </span>{{.Player.Nickname}}</h1>
-
+{{if .CanEdit}}
+<a href="/editplayer/{{.Player.URLPath}}">Edit Player</a>
+{{end}}
 {{range .Games}}
 <div>
   {{$p1 := index $.PlayerMap .Player1}}

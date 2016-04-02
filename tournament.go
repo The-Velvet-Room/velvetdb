@@ -20,6 +20,7 @@ type Tournament struct {
 	GameType    string    `gorethink:"gametype"`
 	Name        string    `gorethink:"name"`
 	BracketURL  string    `gorethink:"bracket_url"`
+	VODUrl      string    `gorethink:"vod_url"`
 	DateStart   time.Time `gorethink:"date_start"`
 	DateEnd     time.Time `gorethink:"date_end"`
 	LastMatchID string    `gorethink:"last_match_id"`
@@ -74,11 +75,16 @@ func fetchTournament(id string) (*Tournament, error) {
 	return &t, nil
 }
 
-func fetchTournaments(gametype string) (*[]Tournament, error) {
+func fetchTournaments(gametype string, inProgress bool) (*[]Tournament, error) {
 	query := getTournamentTable()
 	if gametype != "" {
 		query = query.Filter(map[string]interface{}{
 			"gametype": gametype,
+		})
+	}
+	if !inProgress {
+		query = query.Filter(map[string]interface{}{
+			"last_match_id": "",
 		})
 	}
 	c, err := query.OrderBy("date_start").Run(dataStore.GetSession())
@@ -131,10 +137,14 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	t := fetchChallongeTournament(url)
+
 	id := addTournament(Tournament{
 		Name:       name,
 		BracketURL: url,
 		GameType:   gametype,
+		DateStart:  *t.StartedAt,
+		DateEnd:    *t.UpdatedAt,
 	})
 
 	http.Redirect(w, r, "/tournament/"+id, http.StatusFound)
@@ -169,6 +179,11 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		renderTemplate(w, r, "viewTournament", data)
+		return
+	}
+
+	if _, ok := isLoggedIn(r); !ok {
+		http.NotFound(w, r)
 		return
 	}
 
@@ -250,7 +265,8 @@ func viewTournamentsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/tournaments", http.StatusTemporaryRedirect)
 			return
 		}
-		t, _ = fetchTournaments(selectedType.ID)
+		_, showInProgress := isLoggedIn(r)
+		t, _ = fetchTournaments(selectedType.ID, showInProgress)
 	}
 
 	data := struct {
@@ -325,6 +341,16 @@ func saveTournamentMatchHandler(w http.ResponseWriter, r *http.Request) {
 	updateTournamentLastID(tournamentID, matchID)
 
 	http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
+}
+
+func fetchChallongeTournament(url string) *challonge.Tournament {
+	client := challonge.New(siteConfiguration.ChallongeDevUsername, siteConfiguration.ChallongeApiKey)
+	hash := parseChallongeURL(url)
+	tourneyData, err := client.NewTournamentRequest(hash).Get()
+	if err != nil {
+		fmt.Println(err)
+	}
+	return tourneyData
 }
 
 func fetchChallongeMatches(url string) []*challonge.Match {

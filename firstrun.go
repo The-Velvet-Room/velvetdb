@@ -19,11 +19,11 @@ func usersExist() bool {
 }
 
 func saveFirstRunHandler(w http.ResponseWriter, r *http.Request) {
-	if usersExist() {
+	if usersExist() || r.Method != "POST" {
 		http.NotFound(w, r)
 		return
 	}
-	registerUser(r.FormValue("email"), r.FormValue("password"), getMaxPermissionLevel())
+	registerUser(r.PostFormValue("email"), r.PostFormValue("password"), getMaxPermissionLevel())
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
