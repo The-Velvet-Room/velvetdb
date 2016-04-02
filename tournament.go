@@ -74,8 +74,14 @@ func fetchTournament(id string) (*Tournament, error) {
 	return &t, nil
 }
 
-func fetchTournaments() (*[]Tournament, error) {
-	c, err := getTournamentTable().OrderBy("date_start").Run(dataStore.GetSession())
+func fetchTournaments(gametype string) (*[]Tournament, error) {
+	query := getTournamentTable()
+	if gametype != "" {
+		query = query.Filter(map[string]interface{}{
+			"gametype": gametype,
+		})
+	}
+	c, err := query.OrderBy("date_start").Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
@@ -229,12 +235,32 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewTournamentsHandler(w http.ResponseWriter, r *http.Request) {
-	t, _ := fetchTournaments()
+	vars := mux.Vars(r)
+	gameType := vars["gametype"]
+
+	var gameTypes []GameType
+	var selectedType *GameType
+	var t *[]Tournament
+	if gameType == "" {
+		gameTypes = fetchGameTypes()
+	} else {
+		var err error
+		selectedType, err = fetchGameTypeByURLPath(gameType)
+		if err != nil {
+			http.Redirect(w, r, "/tournaments", http.StatusTemporaryRedirect)
+			return
+		}
+		t, _ = fetchTournaments(selectedType.ID)
+	}
 
 	data := struct {
-		Tournaments *[]Tournament
+		Tournaments      *[]Tournament
+		GameTypes        []GameType
+		SelectedGameType *GameType
 	}{
 		t,
+		gameTypes,
+		selectedType,
 	}
 
 	renderTemplate(w, r, "tournaments", data)

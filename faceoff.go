@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"fmt"
 )
 
 func faceoffHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,12 +43,12 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data := struct {
-		Players []Player
-		Games   *[]Game
-		Player1 *Player
-		Player2 *Player
-		Player1Sets int
-		Player2Sets int
+		Players      []Player
+		Games        *[]Game
+		Player1      *Player
+		Player2      *Player
+		Player1Sets  int
+		Player2Sets  int
 		Player1Games int
 		Player2Games int
 	}{

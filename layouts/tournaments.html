@@ -1,12 +1,24 @@
-{{ define "title" }}Tournaments{{ end }}
+{{ define "title" }}Tournaments{{with .SelectedGameType}} - {{.Name}}{{end}}{{ end }}
 {{ define "content" }}
-<h1>Tournaments</h1>
+<h1>Tournaments{{with .SelectedGameType}} - {{.Name}}{{end}}</h1>
 
 <div>
-  <ul>
-  {{range .Tournaments}}
-    <li>{{.Name}}</li>
+  {{if .SelectedGameType}}
+    <ul>
+    {{range .Tournaments}}
+      <li>{{.Name}}</li>
+    {{end}}
+    </ul>
+  {{else}}
+    <select id="gametype" name="gametype">
+      <option value="">Select a Game</option>
+      {{range .GameTypes}}
+      <option value="{{ .URLPath }}">{{ .Name }}</option>
+      {{end}}
+    </select>
   {{end}}
-  </ul>
 </div>
+{{ end }}
+{{ define "scripts" }}
+<script src="/assets/js/tournaments.js"></script>
 {{ end }}

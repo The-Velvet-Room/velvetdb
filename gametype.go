@@ -8,8 +8,9 @@ import (
 )
 
 type GameType struct {
-	ID   string `gorethink:"id,omitempty"`
-	Name string `gorethink:"name"`
+	ID      string `gorethink:"id,omitempty"`
+	Name    string `gorethink:"name"`
+	URLPath string `gorethink:"urlpath"`
 }
 
 func getGameTypeTable() r.Term {
@@ -31,6 +32,25 @@ func fetchGameTypes() []GameType {
 	return gameTypes
 }
 
+func fetchGameTypeByURLPath(p string) (*GameType, error) {
+	c, err := getGameTypeTable().Filter(map[string]interface{}{
+		"urlpath": p,
+	}).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	var gt *GameType
+	err = c.One(&gt)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return gt, nil
+}
+
 func addGameType(gameType GameType) string {
 	wr, err := getGameTypeTable().Insert(gameType).RunWrite(dataStore.GetSession())
 	if err != nil {
@@ -45,6 +65,7 @@ func addGameTypeHandler(w http.ResponseWriter, r *http.Request) {
 
 func saveGameTypeHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
-	addGameType(GameType{Name: name})
+	urlpath := r.FormValue("urlpath")
+	addGameType(GameType{Name: name, URLPath: urlpath})
 	http.Redirect(w, r, "/", http.StatusFound)
 }
