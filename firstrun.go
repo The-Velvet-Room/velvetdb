@@ -5,7 +5,7 @@ import (
 )
 
 func saveFirstRunHandler(w http.ResponseWriter, r *http.Request) {
-	registerUser(r.FormValue("email"), r.FormValue("password"))
+	registerUser(r.FormValue("email"), r.FormValue("password"), getMaxPermissionLevel())
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 

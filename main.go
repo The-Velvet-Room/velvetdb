@@ -14,8 +14,9 @@ import (
 )
 
 type Page struct {
-	User *User
-	Data interface{}
+	User             *User
+	PermissionLevels PermissionLevels
+	Data             interface{}
 }
 
 var siteConfiguration *Configuration
@@ -63,8 +64,9 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	}
 
 	page := Page{
-		User: user,
-		Data: data,
+		User:             user,
+		PermissionLevels: getPermissionLevels(),
+		Data:             data,
 	}
 
 	err := tmpl.ExecuteTemplate(buf, "base", page)
@@ -129,11 +131,31 @@ func initializeTables() {
 func isAdminMiddleware(next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, ok := isLoggedIn(r)
-		if ok {
-			next(w, r)
-		} else {
+		if !ok {
 			http.NotFound(w, r)
+			return
 		}
+		next(w, r)
+	})
+}
+
+func hasPermissionMiddleware(next func(http.ResponseWriter, *http.Request), permission int) func(http.ResponseWriter, *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		email, ok := isLoggedIn(r)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		u := fetchUserByEmail(email)
+		if u == nil {
+			http.NotFound(w, r)
+			return
+		}
+		if !u.HasPermission(permission) {
+			http.NotFound(w, r)
+			return
+		}
+		next(w, r)
 	})
 }
 
@@ -186,12 +208,13 @@ func main() {
 	r.HandleFunc("/faceoff", faceoffHandler)
 
 	// auth
+	r.HandleFunc("/users", hasPermissionMiddleware(userListHandler, getPermissionLevels().CanModifyUsers))
 	r.HandleFunc("/profile", isAdminMiddleware(userProfileHandler))
-	r.HandleFunc("/register", isAdminMiddleware(registerUserHandler))
+	r.HandleFunc("/adduser", hasPermissionMiddleware(registerUserHandler, getPermissionLevels().CanModifyUsers))
 	r.HandleFunc("/login", loginUserHandler)
 	r.HandleFunc("/save/login", saveLoginUserHandler)
 	r.HandleFunc("/save/logout", saveLogoutUserHandler)
-	r.HandleFunc("/save/register", isAdminMiddleware(saveRegisterUserHandler))
+	r.HandleFunc("/save/adduser", hasPermissionMiddleware(saveRegisterUserHandler, getPermissionLevels().CanModifyUsers))
 	r.HandleFunc("/save/changepassword", isAdminMiddleware(saveChangePasswordHandler))
 
 	fmt.Println("We're up and running!")

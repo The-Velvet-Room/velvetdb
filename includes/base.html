@@ -28,6 +28,9 @@
             <li><a href="/tournaments">Tournaments</a></li>
             {{ with .User }}
             <li><a href="/addtournament">Add Tournament</a></li>
+            {{if .HasPermission $.PermissionLevels.CanModifyUsers}}
+            <li><a href="/users">Users</a></li>
+            {{end}}
             {{ end }}
           </ul>
             {{ with .User }}

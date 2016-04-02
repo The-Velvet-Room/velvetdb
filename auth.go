@@ -18,10 +18,28 @@ type User struct {
 	PermissionLevel int    `gorethink:"permission"`
 }
 
+type PermissionLevels struct {
+	CanModifyUsers int
+}
+
+func (u User) HasPermission(p int) bool {
+	return u.PermissionLevel&p != 0
+}
+
 var sessionStore *rethinkstore.RethinkStore
 
 func getUserTable() r.Term {
 	return r.Table("users")
+}
+
+func getPermissionLevels() PermissionLevels {
+	return PermissionLevels{
+		CanModifyUsers: 1,
+	}
+}
+
+func getMaxPermissionLevel() int {
+	return 1
 }
 
 func initializeSessionStore() {
@@ -74,6 +92,20 @@ func fetchUserByEmail(email string) *User {
 	return &user
 }
 
+func fetchUsers() []User {
+	c, err := getUserTable().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
+	var u []User
+	err = c.All(&u)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return u
+}
+
 func generatePassword(password string) (string, error) {
 	p, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -91,7 +123,7 @@ func validateUser(email string, password string) bool {
 	return err == nil
 }
 
-func registerUser(email string, password string) {
+func registerUser(email string, password string, permissionLevel int) {
 	user := fetchUserByEmail(email)
 	if user == nil {
 		p, err := generatePassword(password)
@@ -99,8 +131,9 @@ func registerUser(email string, password string) {
 			fmt.Println(err)
 		} else {
 			addUser(User{
-				Email:    email,
-				Password: p,
+				Email:           email,
+				Password:        p,
+				PermissionLevel: permissionLevel,
 			})
 		}
 	}
@@ -116,8 +149,27 @@ func isLoggedIn(r *http.Request) (string, bool) {
 }
 
 func saveRegisterUserHandler(w http.ResponseWriter, r *http.Request) {
-	registerUser(r.FormValue("email"), r.FormValue("password"))
-	http.Redirect(w, r, "/", http.StatusFound)
+	e := r.FormValue("email")
+	p := r.FormValue("password")
+	pa := r.FormValue("passwordAgain")
+	cm := r.FormValue("canModifyUsers")
+	data := struct{ Message string }{"User added."}
+	if p != pa {
+		data.Message = "Passwords didn't match."
+		renderTemplate(w, r, "register", data)
+		return
+	}
+	if fetchUserByEmail(e) != nil {
+		data.Message = "User already exists."
+		renderTemplate(w, r, "register", data)
+		return
+	}
+	pl := 0
+	if cm != "" {
+		pl = getPermissionLevels().CanModifyUsers
+	}
+	registerUser(e, p, pl)
+	renderTemplate(w, r, "register", data)
 }
 
 func saveLoginUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -151,8 +203,8 @@ func saveChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	currentPass := r.FormValue("currentPass")
 	newPass := r.FormValue("newPass")
 	newPassAgain := r.FormValue("newPassAgain")
-	data := struct { Message string } { "Password changed successfully." }
-	if (newPass != newPassAgain) {
+	data := struct{ Message string }{"Password changed successfully."}
+	if newPass != newPassAgain {
 		data.Message = "The new passwords didn't match."
 		renderTemplate(w, r, "userProfile", data)
 		return
@@ -181,4 +233,14 @@ func loginUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func userProfileHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "userProfile", nil)
+}
+
+func userListHandler(w http.ResponseWriter, r *http.Request) {
+	u := fetchUsers()
+	data := struct {
+		Users []User
+	} {
+		u,
+	}
+	renderTemplate(w, r, "userList", data)
 }
