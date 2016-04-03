@@ -134,6 +134,7 @@ func initializeTables() {
 	r.TableCreate("gametypes").Run(dataStore.GetSession())
 	r.TableCreate("games").Run(dataStore.GetSession())
 	r.TableCreate("tournaments").Run(dataStore.GetSession())
+	r.TableCreate("tournamentresults").Run(dataStore.GetSession())
 	r.TableCreate("sessions").Run(dataStore.GetSession())
 }
 

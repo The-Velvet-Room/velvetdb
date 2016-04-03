@@ -29,7 +29,7 @@ func fetchGamesForPlayer(id string) []Game {
 	c, err := getGameTable().Filter(r.Or(
 		r.Row.Field("player1").Eq(id),
 		r.Row.Field("player2").Eq(id),
-	)).Run(dataStore.GetSession())
+	)).OrderBy(r.Desc("date")).Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
