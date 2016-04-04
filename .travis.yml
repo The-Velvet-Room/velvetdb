@@ -15,6 +15,10 @@ services:
 before_script:
   - go vet ./...
 
+script:
+  - go test -v ./...
+  - test -z "$(gofmt -l .)"
+
 after_success:
   - if [ "$TRAVIS_PULL_REQUEST" == "true" || TRAVIS_BRANCH != "master" ];
     then exit 0;
