@@ -21,8 +21,8 @@ type Player struct {
 	LastName   string   `gorethink:"last_name"`
 	Facts      []string `gorethink:"facts"`
 	Characters []string `gorethink:"characters"`
-	Twitter		string	`gorethink:"twitter"`
-	Twitch		string	`gorethink:"twitch"`
+	Twitter    string   `gorethink:"twitter"`
+	Twitch     string   `gorethink:"twitch"`
 }
 
 var alphanumeric = regexp.MustCompile("[^A-Za-z0-9]+")

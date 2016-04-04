@@ -15,7 +15,7 @@ type User struct {
 	Email           string `gorethink:"email"`
 	Player          string `gorethink:"player,omitempty"`
 	Password        string `gorethink:"password"`
-	PermissionLevel int    `gorethink:"permission"`
+	PermissionLevel   int    `gorethink:"permission"`
 }
 
 type PermissionLevels struct {
@@ -239,7 +239,7 @@ func userListHandler(w http.ResponseWriter, r *http.Request) {
 	u := fetchUsers()
 	data := struct {
 		Users []User
-	} {
+	}{
 		u,
 	}
 	renderTemplate(w, r, "userList", data)

@@ -19,6 +19,7 @@ type Game struct {
 	Player2           string    `gorethink:"player2"`
 	Player1score      int       `gorethink:"player1_score"`
 	Player2score      int       `gorethink:"player2_score"`
+	Round             int       `gorethink:"round"`
 }
 
 func getGameTable() r.Term {
