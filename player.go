@@ -202,18 +202,18 @@ func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 		playerMap[p.ID] = p
 	}
 
-	games := fetchGamesForPlayer(player.ID)
+	matches := fetchMatchesForPlayer(player.ID)
 
 	_, canEdit := isLoggedIn(r)
 
 	data := struct {
 		Player    *Player
-		Games     []Game
+		Matches   []Match
 		PlayerMap map[string]Player
 		CanEdit   bool
 	}{
 		player,
-		games,
+		matches,
 		playerMap,
 		canEdit,
 	}

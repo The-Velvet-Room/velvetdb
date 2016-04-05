@@ -1,8 +1,8 @@
-{{ define "title" }}Add Game{{ end }}
+{{ define "title" }}Add Match{{ end }}
 {{ define "content" }}
-<h1>Add Game</h1>
+<h1>Add Match</h1>
 
-<form action="/save/addgame" method="POST">
+<form action="/save/addmatch" method="POST">
   <label for="player1">Player 1</label>
   <select id="player1" name="player1">
     {{range .Players}}

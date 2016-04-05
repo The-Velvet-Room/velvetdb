@@ -220,7 +220,7 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// add tournament matches
-	newGames := []*Game{}
+	newMatches := []*Match{}
 	for _, m := range ct.Matches {
 		scoreSplit := strings.Split(m.Scores, "-")
 		m.PlayerOneScore, _ = strconv.Atoi(scoreSplit[0])
@@ -228,7 +228,7 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 		p1 := strconv.Itoa(m.PlayerOneId)
 		p2 := strconv.Itoa(m.PlayerTwoId)
 		tMatchID := strconv.Itoa(m.Id)
-		newGames = append(newGames, &Game{
+		newMatches = append(newMatches, &Match{
 			Date:              *m.UpdatedAt,
 			GameType:          t.GameType,
 			Tournament:        t.ID,
@@ -240,7 +240,7 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 			Round:             m.Round,
 		})
 	}
-	_, err = getGameTable().Insert(newGames).RunWrite(dataStore.GetSession())
+	_, err = getMatchTable().Insert(newMatches).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -267,7 +267,7 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	games := fetchGamesForTournament(t.ID)
+	matches := fetchMatchesForTournament(t.ID)
 	players := fetchPlayers()
 	playerMap := make(map[string]Player)
 	for _, p := range players {
@@ -276,11 +276,11 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		Tournament *Tournament
-		Games      []Game
+		Matches    []Match
 		PlayerMap  map[string]Player
 	}{
 		t,
-		games,
+		matches,
 		playerMap,
 	}
 

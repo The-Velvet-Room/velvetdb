@@ -9,7 +9,7 @@ import (
 	r "github.com/dancannon/gorethink"
 )
 
-type Game struct {
+type Match struct {
 	ID                string    `gorethink:"id,omitempty"`
 	Tournament        string    `gorethink:"tournament,omitempty"`
 	TournamentMatchID string    `gorethink:"tournament_match_id"`
@@ -22,12 +22,12 @@ type Game struct {
 	Round             int       `gorethink:"round"`
 }
 
-func getGameTable() r.Term {
-	return r.Table("games")
+func getMatchTable() r.Term {
+	return r.Table("matches")
 }
 
-func fetchGamesForPlayer(id string) []Game {
-	c, err := getGameTable().Filter(r.Or(
+func fetchMatchesForPlayer(id string) []Match {
+	c, err := getMatchTable().Filter(r.Or(
 		r.Row.Field("player1").Eq(id),
 		r.Row.Field("player2").Eq(id),
 	)).OrderBy(r.Desc("date")).Run(dataStore.GetSession())
@@ -35,16 +35,16 @@ func fetchGamesForPlayer(id string) []Game {
 	if err != nil {
 		fmt.Println(err)
 	}
-	games := []Game{}
-	err = c.All(&games)
+	matches := []Match{}
+	err = c.All(&matches)
 	if err != nil {
 		fmt.Println(err)
 	}
-	return games
+	return matches
 }
 
-func fetchGamesForPlayers(p1 string, p2 string) *[]Game {
-	c, err := getGameTable().Filter(r.Or(
+func fetchMatchesForPlayers(p1 string, p2 string) *[]Match {
+	c, err := getMatchTable().Filter(r.Or(
 		r.Row.Field("player1").Eq(p1).And(r.Row.Field("player2").Eq(p2)),
 		r.Row.Field("player1").Eq(p2).And(r.Row.Field("player2").Eq(p1)),
 	)).Run(dataStore.GetSession())
@@ -52,39 +52,39 @@ func fetchGamesForPlayers(p1 string, p2 string) *[]Game {
 	if err != nil {
 		fmt.Println(err)
 	}
-	games := []Game{}
-	err = c.All(&games)
+	matches := []Match{}
+	err = c.All(&matches)
 	if err != nil {
 		fmt.Println(err)
 	}
-	return &games
+	return &matches
 }
 
-func fetchGamesForTournament(id string) []Game {
-	c, err := getGameTable().Filter(map[string]interface{}{
+func fetchMatchesForTournament(id string) []Match {
+	c, err := getMatchTable().Filter(map[string]interface{}{
 		"tournament": id,
 	}).OrderBy("date").Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
 	}
-	games := []Game{}
-	err = c.All(&games)
+	matches := []Match{}
+	err = c.All(&matches)
 	if err != nil {
 		fmt.Println(err)
 	}
-	return games
+	return matches
 }
 
-func addGame(game Game) string {
-	wr, err := getGameTable().Insert(game).RunWrite(dataStore.GetSession())
+func addMatch(m Match) string {
+	wr, err := getMatchTable().Insert(m).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
 	}
 	return wr.GeneratedKeys[0]
 }
 
-func addGameHandler(w http.ResponseWriter, r *http.Request) {
+func addMatchHandler(w http.ResponseWriter, r *http.Request) {
 	// get players
 	players := fetchPlayers()
 
@@ -98,10 +98,10 @@ func addGameHandler(w http.ResponseWriter, r *http.Request) {
 		gameTypes,
 	}
 
-	renderTemplate(w, r, "addGame", data)
+	renderTemplate(w, r, "addMatch", data)
 }
 
-func saveGameHandler(w http.ResponseWriter, r *http.Request) {
+func saveMatchHandler(w http.ResponseWriter, r *http.Request) {
 	player1 := r.FormValue("player1")
 	player2 := r.FormValue("player2")
 	player1score, _ := strconv.Atoi(r.FormValue("player1score"))
@@ -111,7 +111,7 @@ func saveGameHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusBadRequest)
 	}
 
-	addGame(Game{
+	addMatch(Match{
 		Player1:      player1,
 		Player2:      player2,
 		GameType:     gameType,

@@ -90,7 +90,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		playerDict[p.ID] = p
 	}
 
-	c, err := getGameTable().OrderBy("date").Run(dataStore.GetSession())
+	c, err := getMatchTable().OrderBy("date").Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
@@ -98,21 +98,21 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 	e := &Elo{k: 32}
 
-	var gameResult Game
-	for c.Next(&gameResult) {
-		if _, ok := rankDict[gameResult.Player1]; !ok {
-			rankDict[gameResult.Player1] = NewEloDict(playerDict[gameResult.Player1])
+	var m Match
+	for c.Next(&m) {
+		if _, ok := rankDict[m.Player1]; !ok {
+			rankDict[m.Player1] = NewEloDict(playerDict[m.Player1])
 		}
-		if _, ok := rankDict[gameResult.Player2]; !ok {
-			rankDict[gameResult.Player2] = NewEloDict(playerDict[gameResult.Player2])
+		if _, ok := rankDict[m.Player2]; !ok {
+			rankDict[m.Player2] = NewEloDict(playerDict[m.Player2])
 		}
-		expectedScore1 := e.getExpected(rankDict[gameResult.Player1].Rank, rankDict[gameResult.Player2].Rank)
-		expectedScore2 := e.getExpected(rankDict[gameResult.Player2].Rank, rankDict[gameResult.Player1].Rank)
+		expectedScore1 := e.getExpected(rankDict[m.Player1].Rank, rankDict[m.Player2].Rank)
+		expectedScore2 := e.getExpected(rankDict[m.Player2].Rank, rankDict[m.Player1].Rank)
 
-		player1results := float64(gameResult.Player1score) / float64(gameResult.Player1score+gameResult.Player2score)
+		player1results := float64(m.Player1score) / float64(m.Player1score+m.Player2score)
 
-		rankDict[gameResult.Player1].Rank = e.updateRating(expectedScore1, player1results, rankDict[gameResult.Player1].Rank)
-		rankDict[gameResult.Player2].Rank = e.updateRating(expectedScore2, 1-player1results, rankDict[gameResult.Player2].Rank)
+		rankDict[m.Player1].Rank = e.updateRating(expectedScore1, player1results, rankDict[m.Player1].Rank)
+		rankDict[m.Player2].Rank = e.updateRating(expectedScore2, 1-player1results, rankDict[m.Player2].Rank)
 	}
 
 	ranks := make([]*EloDict, len(rankDict))
@@ -132,7 +132,7 @@ func initializeTables() {
 	r.TableCreate("users").Run(dataStore.GetSession())
 	r.TableCreate("players").Run(dataStore.GetSession())
 	r.TableCreate("gametypes").Run(dataStore.GetSession())
-	r.TableCreate("games").Run(dataStore.GetSession())
+	r.TableCreate("matches").Run(dataStore.GetSession())
 	r.TableCreate("tournaments").Run(dataStore.GetSession())
 	r.TableCreate("tournamentresults").Run(dataStore.GetSession())
 	r.TableCreate("sessions").Run(dataStore.GetSession())
@@ -198,11 +198,11 @@ func main() {
 	r.HandleFunc("/player/{playerNick:[a-zA-Z0-9]+}", playerViewHandler)
 	r.HandleFunc("/addplayer", isAdminMiddleware(addPlayerHandler))
 	r.HandleFunc("/addgametype", isAdminMiddleware(addGameTypeHandler))
-	r.HandleFunc("/addgame", isAdminMiddleware(addGameHandler))
+	r.HandleFunc("/addmatch", isAdminMiddleware(addMatchHandler))
 	r.HandleFunc("/addtournament", isAdminMiddleware(addTournamentHandler))
 	r.HandleFunc("/tournaments", viewTournamentsHandler)
 	r.HandleFunc("/tournaments/{gametype}", viewTournamentsHandler)
-	r.HandleFunc("/save/addgame", isAdminMiddleware(saveGameHandler))
+	r.HandleFunc("/save/addmatch", isAdminMiddleware(saveMatchHandler))
 	r.HandleFunc("/save/addplayer", isAdminMiddleware(savePlayerHandler))
 	r.HandleFunc("/save/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(saveEditPlayerHandler))
 	r.HandleFunc("/save/addgametype", isAdminMiddleware(saveGameTypeHandler))

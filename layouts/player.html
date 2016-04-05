@@ -6,7 +6,7 @@
 {{if .CanEdit}}
 <a href="/editplayer/{{.Player.URLPath}}">Edit Player</a>
 {{end}}
-{{range .Games}}
+{{range .Matches}}
 <div>
   {{$p1 := index $.PlayerMap .Player1}}
   {{$p2 := index $.PlayerMap .Player2}}
