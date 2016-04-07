@@ -17,7 +17,9 @@ before_script:
 
 script:
   - go test -v ./...
-  - test -z "$(gofmt -l .)"
+  - gofmt -d . >> gofmt.file
+  - echo $(cat gofmt.file)
+  - test ! -s gofmt.file
 
 after_success:
   - if [ "$TRAVIS_PULL_REQUEST" == "true" || TRAVIS_BRANCH != "master" ];
