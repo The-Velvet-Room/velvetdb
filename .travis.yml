@@ -22,7 +22,7 @@ script:
   - test ! -s gofmt.file
 
 after_success:
-  - if [ "$TRAVIS_PULL_REQUEST" == "true" || TRAVIS_BRANCH != "master" ];
+  - if [ "$TRAVIS_PULL_REQUEST" == "true" || "$TRAVIS_BRANCH" != "master" ];
     then exit 0;
     fi
   - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
