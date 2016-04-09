@@ -4,25 +4,59 @@ import (
 	"fmt"
 	"net/http"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	r "github.com/dancannon/gorethink"
 )
 
 type GameType struct {
-	ID   bson.ObjectId `bson:"_id,omitempty"`
-	Name string
+	ID      string `gorethink:"id,omitempty"`
+	Name    string `gorethink:"name"`
+	URLPath string `gorethink:"urlpath"`
 }
 
-func fetchGameTypes(session *mgo.Session) []GameType {
-	c := session.DB("test").C("gametypes")
-	gameTypeIter := c.Find(nil).Iter()
+func getGameTypeTable() r.Term {
+	return r.Table("gametypes")
+}
+
+func fetchGameTypes() []GameType {
+	c, err := getGameTypeTable().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	gameTypes := []GameType{}
-	var gameTypeResult *GameType
-	for gameTypeIter.Next(&gameTypeResult) {
-		gameTypes = append(gameTypes, *gameTypeResult)
+	err = c.All(&gameTypes)
+	if err != nil {
+		fmt.Println(err)
 	}
 	return gameTypes
+}
+
+func fetchGameTypeByURLPath(p string) (*GameType, error) {
+	c, err := getGameTypeTable().Filter(map[string]interface{}{
+		"urlpath": p,
+	}).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	var gt *GameType
+	err = c.One(&gt)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return gt, nil
+}
+
+func addGameType(gameType GameType) string {
+	wr, err := getGameTypeTable().Insert(gameType).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	return wr.GeneratedKeys[0]
 }
 
 func addGameTypeHandler(w http.ResponseWriter, r *http.Request) {
@@ -30,13 +64,8 @@ func addGameTypeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func saveGameTypeHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
 	name := r.FormValue("name")
-	c := session.DB("test").C("gametypes")
-	saveErr := c.Insert(&GameType{Name: name})
-	if saveErr != nil {
-		fmt.Println(saveErr)
-	}
+	urlpath := r.FormValue("urlpath")
+	addGameType(GameType{Name: name, URLPath: urlpath})
 	http.Redirect(w, r, "/", http.StatusFound)
 }

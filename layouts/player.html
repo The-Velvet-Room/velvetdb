@@ -2,9 +2,11 @@
 
 {{ define "content" }}
 
-<h1>{{.Player.Nickname}}</h1>
-
-{{range .Games}}
+<h1><span style="color: #444">{{.Player.Tag}} </span>{{.Player.Nickname}}</h1>
+{{if .CanEdit}}
+<a href="/editplayer/{{.Player.URLPath}}">Edit Player</a>
+{{end}}
+{{range .Matches}}
 <div>
   {{$p1 := index $.PlayerMap .Player1}}
   {{$p2 := index $.PlayerMap .Player2}}

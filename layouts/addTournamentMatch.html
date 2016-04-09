@@ -1,72 +1,41 @@
 {{ define "title" }}Add Tournament Match{{ end }}
 {{ define "content" }}
 <h1>{{.Tournament.Name}}</h1>
-<h3>Match {{.MatchNumber}} of {{.MatchCount}}</h3>
 
-<form action="/save/addtournamentmatch/{{.Tournament.ID.Hex}}" method="POST">
-  <input type="hidden" name="match" value="{{.Match.Id}}" />
+<form id="form" action="/save/addtournamentmatch/{{.Tournament.ID}}" method="POST">
   <table class="table">
     <thead>
       <th>Name</th>
       <th>New?</th>
       <th>Existing?</th>
-      <th>Score</th>
     </thead>
     <tbody>
+      {{range .Participants}}
       <!--Player 1-->
       <tr>
-        <td>{{.Match.PlayerOne.Name}}</td>
+        <td>{{.Name}}</td>
         <td class="col-md-4">
           <div class="input-group">
             <span class="input-group-addon">
-              <input type="radio" name="player1" value="new">
+              <input type="radio" name="p_{{.Id}}" value="new">
             </span>
-            <input type="text" class="form-control" name="player1newname" value="{{.Match.PlayerOne.Name}}">
+            <input type="text" class="form-control" name="newname_p_{{.Id}}" value="{{.Name}}">
           </div>
         </td>
         <td class="col-md-4">
           <div class="input-group">
             <span class="input-group-addon">
-              <input type="radio" name="player1" value="select" checked>
+              <input type="radio" name="p_{{.Id}}" value="select" checked>
             </span>
-            <select class="form-control" name="player1select">
-              {{range .Players}}
-              <option value="{{ .ID.Hex }}">{{ .Nickname }}</option>
+            <select class="form-control" name="select_p_{{.Id}}">
+              {{range $.Players}}
+              <option value="{{ .ID }}">{{ .Nickname }}</option>
               {{end}}
             </select>
           </div>
         </td>
-        <td class="col-md-1">
-          <input type="number" class="form-control" name="player1score" value="{{.Match.PlayerOneScore}}">
-        </td>
       </tr>
-      <!--Player 2-->
-      <tr>
-        <td>{{.Match.PlayerTwo.Name}}</td>
-        <td class="col-md-4">
-          <div class="input-group">
-            <span class="input-group-addon">
-              <input type="radio" name="player2" value="new">
-            </span>
-            <input type="text" class="form-control" name="player2newname" value="{{.Match.PlayerTwo.Name}}">
-          </div>
-        </td>
-        <td class="col-md-4">
-          <div class="input-group">
-            <span class="input-group-addon">
-              <input type="radio" name="player2" value="select" checked>
-            </span>
-            <select class="form-control" name="player2select">
-              {{range .Players}}
-              <option value="{{ .ID.Hex }}">{{ .Nickname }}</option>
-              {{end}}
-            </select>
-          </div>
-        </td>
-        <td class="col-md-1">
-          <input type="number" class="form-control" name="player2score" value="{{.Match.PlayerTwoScore}}">
-        </td>
-      </tr>
+      {{end}}
     </tbody>
   </table>
 
@@ -74,7 +43,4 @@
     <input class="btn btn-default" type="submit" value="Save">
   </div>
 </form>
-{{ end }}
-{{ define "scripts" }}
-<script src="/assets/js/addTournamentMatch.js"></script>
 {{ end }}

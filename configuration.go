@@ -10,7 +10,7 @@ import (
 )
 
 type Configuration struct {
-	MongoConnection      string `json:"mongoConnection"`
+	RethinkConnection    string `json:"rethinkConnection"`
 	ChallongeApiKey      string `json:"challongeApiKey"`
 	ChallongeDevUsername string `json:"challongeDevUsername"`
 	CookieKey            string `json:"cookieKey"`

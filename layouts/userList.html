@@ -1,0 +1,11 @@
+{{ define "title" }}Users{{ end }}
+{{ define "content" }}
+<h1>Users</h1>
+<a href="/adduser">Add User</a>
+
+<ul>
+{{range .Users}}
+  <li>{{.Email}}</li>
+{{end}}
+<ul>
+{{ end }}

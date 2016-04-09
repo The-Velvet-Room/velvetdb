@@ -1,0 +1,28 @@
+{{ define "title" }}Edit Player{{ end }}
+{{ define "content" }}
+<h1>Edit Player</h1>
+
+<form action="/save/editplayer/{{.Player.URLPath}}" method="POST">
+  <div>
+    <label for="nickname">Nickname</label>
+    <input type="text" name="nickname" id="nickname" value="{{.Player.Nickname}}">
+  </div>
+  <div>
+    <label for="urlpath">URL Path</label>
+    <input type="text" name="urlpath" id="urlpath" value="{{.Player.URLPath}}">
+  </div>
+  <div>
+    <label for="tag">Tag</label>
+    <input type="text" name="tag" id="tag" value="{{.Player.Tag}}">
+  </div>
+  <div>
+    <label for="firstname">First Name</label>
+    <input type="text" name="firstname" id="firstname" value="{{.Player.FirstName}}">
+    <label for="lastname">Last Name</label>
+    <input type="text" name="lastname" id="lastname" value="{{.Player.LastName}}">
+  </div>
+  <div>
+    <input type="submit" value="Save">
+  </div>
+</form>
+{{ end }}

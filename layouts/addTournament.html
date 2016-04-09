@@ -6,7 +6,7 @@
   <input id="name" name="name" placeholder="Name" />
   <select id="gametype" name="gametype">
     {{range .GameTypes}}
-    <option value="{{ .ID.Hex }}">{{ .Name }}</option>
+    <option value="{{ .ID }}">{{ .Name }}</option>
     {{end}}
   </select>
   <input id="url" name="url" placeholder="Challonge Url" />

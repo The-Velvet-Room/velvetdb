@@ -1,10 +1,18 @@
-{{ define "title" }}Register{{ end }}
+{{ define "title" }}Add User{{ end }}
 {{ define "content" }}
-<h1>Register</h1>
+<h1>Add User</h1>
 
-<form action="/save/register" method="POST">
+{{with .Message}}
+<div>{{.}}</div>
+{{end}}
+<form action="/save/adduser" method="POST">
   <input id="email" name="email" type="email" placeholder="Email" />
   <input id="password" name="password" type="password" placeholder="Password" />
+  <input id="passwordAgain" name="passwordAgain" type="password" placeholder="Password (again)" />
+  <div>
+    <label for="canModifyUsers">Can Modify Users</label>
+    <input type="checkbox" name="canModifyUsers" value="1">
+  </div>
   <div>
     <input type="submit" value="Save">
   </div>

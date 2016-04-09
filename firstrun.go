@@ -4,20 +4,31 @@ import (
 	"net/http"
 )
 
-func saveFirstRunHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
+func usersExist() bool {
+	c, err := getUserTable().Count().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return false
+	}
+	var count int
+	err = c.One(&count)
+	if err != nil {
+		return false
+	}
+	return count != 0
+}
 
-	registerUser(session, r.FormValue("email"), r.FormValue("password"))
+func saveFirstRunHandler(w http.ResponseWriter, r *http.Request) {
+	if usersExist() || r.Method != "POST" {
+		http.NotFound(w, r)
+		return
+	}
+	registerUser(r.PostFormValue("email"), r.PostFormValue("password"), getMaxPermissionLevel())
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func firstRunHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
-	c := getUserCollection(session)
-	num, err := c.Count()
-	if num != 0 && err == nil {
+	if usersExist() {
 		http.NotFound(w, r)
 		return
 	}

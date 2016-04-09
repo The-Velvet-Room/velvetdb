@@ -7,18 +7,24 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aspic/go-challonge"
+	r "github.com/dancannon/gorethink"
+
+	"time"
+
+	"github.com/dguenther/go-challonge"
 	"github.com/gorilla/mux"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Tournament struct {
-	ID       bson.ObjectId `bson:"_id,omitempty"`
-	GameType bson.ObjectId
-	Name     string
-	URL      string
-	LastID   string
+	ID          string    `gorethink:"id,omitempty"`
+	GameType    string    `gorethink:"gametype"`
+	Name        string    `gorethink:"name"`
+	BracketURL  string    `gorethink:"bracket_url"`
+	VODUrl      string    `gorethink:"vod_url"`
+	DateStart   time.Time `gorethink:"date_start"`
+	DateEnd     time.Time `gorethink:"date_end"`
+	PlayerCount int       `gorethink:"player_count"`
+	Editing     bool      `gorethink:"editing"`
 }
 
 const initialLastID string = "0"
@@ -29,23 +35,74 @@ func (a matchesByID) Len() int           { return len(a) }
 func (a matchesByID) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a matchesByID) Less(i, j int) bool { return a[i].Id < a[j].Id }
 
-func getTournamentCollection(session *mgo.Session) *mgo.Collection {
-	return session.DB("test").C("tournaments")
+func getTournamentTable() r.Term {
+	return r.Table("tournaments")
 }
 
-func updateTournamentLastID(session *mgo.Session, id bson.ObjectId, lastID string) {
-	c := getTournamentCollection(session)
-	updateErr := c.Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"lastid": lastID}})
-	if updateErr != nil {
-		fmt.Println(updateErr)
+func updateTournamentEditing(id string, editing bool) {
+	_, err := getTournamentTable().Get(id).Update(map[string]interface{}{
+		"editing": editing,
+	}).RunWrite(dataStore.GetSession())
+
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 
-func addTournamentHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
+func addTournament(t Tournament) string {
+	wr, err := getTournamentTable().Insert(&t).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	return wr.GeneratedKeys[0]
+}
 
-	gameTypes := fetchGameTypes(session)
+func fetchTournament(id string) (*Tournament, error) {
+	c, err := getTournamentTable().Get(id).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	var t Tournament
+	err = c.One(&t)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return &t, nil
+}
+
+func fetchTournaments(gametype string, inProgress bool) (*[]Tournament, error) {
+	query := getTournamentTable()
+	if gametype != "" {
+		query = query.Filter(map[string]interface{}{
+			"gametype": gametype,
+		})
+	}
+	if !inProgress {
+		query = query.Filter(map[string]interface{}{
+			"last_match_id": "",
+		})
+	}
+	c, err := query.OrderBy("date_start").Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	var t []Tournament
+	err = c.All(&t)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return &t, nil
+}
+
+func addTournamentHandler(w http.ResponseWriter, r *http.Request) {
+	gameTypes := fetchGameTypes()
 
 	data := struct {
 		GameTypes []GameType
@@ -61,203 +118,216 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	gametype := r.FormValue("gametype")
 
-	session := dataStore.GetSession()
-	defer session.Close()
-
-	c := getTournamentCollection(session)
-	var tournament Tournament
-	oneErr := c.Find(bson.M{"url": url}).One(&tournament)
-	if oneErr != nil {
-		fmt.Println(oneErr)
-	}
-
-	err := c.Insert(&Tournament{
-		Name:     name,
-		URL:      url,
-		LastID:   initialLastID,
-		GameType: bson.ObjectIdHex(gametype),
-	})
+	c, err := getTournamentTable().Filter(map[string]interface{}{
+		"bracket_url": url,
+	}).Run(dataStore.GetSession())
+	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
 	}
-	oneErr = c.Find(bson.M{"url": url}).One(&tournament)
-	if oneErr != nil {
-		fmt.Println(oneErr)
+
+	// if we find a tournament with the same bracket url,
+	// redirect to that tournament
+	if !c.IsNil() {
+		var t Tournament
+		c.One(&t)
+		http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
+		return
 	}
 
-	http.Redirect(w, r, "/tournament/"+tournament.ID.Hex(), http.StatusFound)
+	t := fetchChallongeTournament(url)
+
+	id := addTournament(Tournament{
+		Name:        name,
+		BracketURL:  url,
+		GameType:    gametype,
+		DateStart:   *t.StartedAt,
+		DateEnd:     *t.UpdatedAt,
+		PlayerCount: t.ParticipantsCount,
+		Editing:     true,
+	})
+
+	http.Redirect(w, r, "/tournament/"+id, http.StatusFound)
+}
+
+func addTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	ct := fetchChallongeTournament(t.BracketURL)
+	players := fetchPlayers()
+	data := struct {
+		Tournament   *Tournament
+		Participants []*challonge.Participant
+		Players      []Player
+	}{
+		t,
+		ct.Participants,
+		players,
+	}
+	renderTemplate(w, r, "addTournamentMatch", data)
+}
+
+func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	playerMap := make(map[string]string)
+	r.ParseForm()
+	for k, v := range r.PostForm {
+		split := strings.Split(k, "_")
+		if split[0] != "p" {
+			continue
+		}
+		var playerID string
+		if v[0] == "new" {
+			playerID = addPlayer(Player{
+				Nickname: r.FormValue("newname_" + k),
+			})
+		} else {
+			playerID = r.FormValue("select_" + k)
+		}
+		playerMap[split[1]] = playerID
+	}
+
+	ct := fetchChallongeTournament(t.BracketURL)
+	// Add tournament results
+	newResults := []*TournamentResult{}
+	for _, p := range ct.Participants {
+		id := strconv.Itoa(p.Id)
+		newResults = append(newResults, &TournamentResult{
+			Tournament: t.ID,
+			Player:     playerMap[id],
+			Place:      p.FinalRank,
+			Seed:       p.Seed,
+		})
+	}
+	_, err = getTournamentResultTable().Insert(newResults).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// add tournament matches
+	newMatches := []*Match{}
+	for _, m := range ct.Matches {
+		scoreSplit := strings.Split(m.Scores, "-")
+		m.PlayerOneScore, _ = strconv.Atoi(scoreSplit[0])
+		m.PlayerTwoScore, _ = strconv.Atoi(scoreSplit[1])
+		p1 := strconv.Itoa(m.PlayerOneId)
+		p2 := strconv.Itoa(m.PlayerTwoId)
+		tMatchID := strconv.Itoa(m.Id)
+		newMatches = append(newMatches, &Match{
+			Date:              *m.UpdatedAt,
+			GameType:          t.GameType,
+			Tournament:        t.ID,
+			TournamentMatchID: tMatchID,
+			Player1:           playerMap[p1],
+			Player2:           playerMap[p2],
+			Player1score:      m.PlayerOneScore,
+			Player2score:      m.PlayerTwoScore,
+			Round:             m.Round,
+		})
+	}
+	_, err = getMatchTable().Insert(newMatches).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	updateTournamentEditing(t.ID, false)
+	http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
 }
 
 func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tournamentID := vars["tournament"]
-	if !bson.IsObjectIdHex(tournamentID) {
-		http.NotFound(w, r)
-		return
-	}
-	session := dataStore.GetSession()
-	defer session.Close()
 
-	c := getTournamentCollection(session)
-	var tournament Tournament
-	findErr := c.Find(bson.M{"_id": bson.ObjectIdHex(tournamentID)}).One(&tournament)
-	if findErr != nil {
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	if tournament.LastID == "" {
-		games := fetchGamesForTournament(session, tournament.ID)
-		players := fetchPlayers(session)
-		playerMap := make(map[bson.ObjectId]Player)
-		for _, p := range players {
-			playerMap[p.ID] = p
+	if t.Editing {
+		if _, ok := isLoggedIn(r); ok {
+			http.Redirect(w, r, "/tournament/addmatches/"+t.ID, http.StatusFound)
+		} else {
+			http.NotFound(w, r)
 		}
-
-		data := struct {
-			Tournament Tournament
-			Games      []Game
-			PlayerMap  map[bson.ObjectId]Player
-		}{
-			tournament,
-			games,
-			playerMap,
-		}
-
-		renderTemplate(w, r, "viewTournament", data)
 		return
 	}
 
-	matches := fetchChallongeMatches(tournament.URL)
-
-	intID, _ := strconv.Atoi(tournament.LastID)
-	var match *challonge.Match
-	var count int
-	nextIter := false
-
-	if tournament.LastID == initialLastID {
-		count = 1
-		match = matches[0]
-	} else {
-		for index, m := range matches {
-			if nextIter {
-				match = m
-				count = index + 1
-				break
-			}
-			if m.Id == intID {
-				nextIter = true
-			}
-		}
+	matches := fetchMatchesForTournament(t.ID)
+	players := fetchPlayers()
+	playerMap := make(map[string]Player)
+	for _, p := range players {
+		playerMap[p.ID] = p
 	}
-
-	// we've loaded all matches
-	if match == nil {
-		updateTournamentLastID(session, tournament.ID, "")
-		games := fetchGamesForTournament(session, tournament.ID)
-		data := struct {
-			Tournament Tournament
-			Games      []Game
-		}{
-			tournament,
-			games,
-		}
-
-		renderTemplate(w, r, "viewTournament", data)
-		return
-	}
-
-	scoreSplit := strings.Split(match.Scores, "-")
-	match.PlayerOneScore, _ = strconv.Atoi(scoreSplit[0])
-	match.PlayerTwoScore, _ = strconv.Atoi(scoreSplit[1])
-
-	players := fetchPlayers(session)
 
 	data := struct {
-		MatchNumber int
-		MatchCount  int
-		Match       *challonge.Match
-		Tournament  Tournament
-		Players     []Player
+		Tournament *Tournament
+		Matches    []Match
+		PlayerMap  map[string]Player
 	}{
-		count,
-		len(matches),
-		match,
-		tournament,
-		players,
+		t,
+		matches,
+		playerMap,
 	}
 
-	renderTemplate(w, r, "addTournamentMatch", data)
+	renderTemplate(w, r, "viewTournament", data)
 }
 
-func saveTournamentMatchHandler(w http.ResponseWriter, r *http.Request) {
+func viewTournamentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	tournamentID := vars["tournament"]
+	gameType := vars["gametype"]
 
-	if !bson.IsObjectIdHex(tournamentID) {
-		http.NotFound(w, r)
-		return
-	}
-	session := dataStore.GetSession()
-	defer session.Close()
-
-	c := getTournamentCollection(session)
-	var tournament Tournament
-	findErr := c.Find(bson.M{"_id": bson.ObjectIdHex(tournamentID)}).One(&tournament)
-	if findErr != nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	matchID := r.FormValue("match")
-	matches := fetchChallongeMatches(tournament.URL)
-
-	intID, _ := strconv.Atoi(matchID)
-	var match *challonge.Match
-	for index := range matches {
-		if matches[index].Id == intID {
-			match = matches[index]
-			break
+	var gameTypes []GameType
+	var selectedType *GameType
+	var t *[]Tournament
+	if gameType == "" {
+		gameTypes = fetchGameTypes()
+	} else {
+		var err error
+		selectedType, err = fetchGameTypeByURLPath(gameType)
+		if err != nil {
+			http.Redirect(w, r, "/tournaments", http.StatusTemporaryRedirect)
+			return
 		}
+		_, showInProgress := isLoggedIn(r)
+		t, _ = fetchTournaments(selectedType.ID, showInProgress)
 	}
 
-	player1 := r.FormValue("player1")
-	var player1ID bson.ObjectId
-	if player1 == "new" {
-		player1ID = addPlayer(session, Player{
-			Nickname: r.FormValue("player1newname"),
-		})
-	} else {
-		player1ID = bson.ObjectIdHex(r.FormValue("player1select"))
+	data := struct {
+		Tournaments      *[]Tournament
+		GameTypes        []GameType
+		SelectedGameType *GameType
+	}{
+		t,
+		gameTypes,
+		selectedType,
 	}
 
-	player2 := r.FormValue("player2")
-	var player2ID bson.ObjectId
-	if player2 == "new" {
-		player2ID = addPlayer(session, Player{
-			Nickname: r.FormValue("player2newname"),
-		})
-	} else {
-		player2ID = bson.ObjectIdHex(r.FormValue("player2select"))
+	renderTemplate(w, r, "tournaments", data)
+}
+
+func fetchChallongeTournament(url string) *challonge.Tournament {
+	client := challonge.New(siteConfiguration.ChallongeDevUsername, siteConfiguration.ChallongeApiKey)
+	hash := parseChallongeURL(url)
+	tourneyData, err := client.NewTournamentRequest(hash).WithMatches().WithParticipants().Get()
+	if err != nil {
+		fmt.Println(err)
 	}
-
-	player1score, _ := strconv.Atoi(r.FormValue("player1score"))
-	player2score, _ := strconv.Atoi(r.FormValue("player2score"))
-
-	addGame(session, Game{
-		Tournament:        tournament.ID,
-		TournamentMatchID: matchID,
-		Date:              *match.UpdatedAt,
-		GameType:          tournament.GameType,
-		Player1:           player1ID,
-		Player2:           player2ID,
-		Player1score:      player1score,
-		Player2score:      player2score,
-	})
-
-	updateTournamentLastID(session, bson.ObjectIdHex(tournamentID), matchID)
-
-	http.Redirect(w, r, "/tournament/"+tournament.ID.Hex(), http.StatusFound)
+	return tourneyData
 }
 
 func fetchChallongeMatches(url string) []*challonge.Match {

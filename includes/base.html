@@ -24,8 +24,13 @@
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
+            <li><a href="/faceoff">Faceoff</a></li>
+            <li><a href="/tournaments">Tournaments</a></li>
             {{ with .User }}
             <li><a href="/addtournament">Add Tournament</a></li>
+            {{if .HasPermission $.PermissionLevels.CanModifyUsers}}
+            <li><a href="/users">Users</a></li>
+            {{end}}
             {{ end }}
           </ul>
             {{ with .User }}
@@ -33,7 +38,7 @@
                 <button type="submit" class="btn btn-default">Log Out</button>
             </form>
             <div class="navbar-right">
-                <p class="navbar-text">{{ .Email }}</p>
+                <p class="navbar-text"><a href="/profile">{{ .Email }}</a></p>
             </div>
             {{end}}
         </div><!--/.nav-collapse -->

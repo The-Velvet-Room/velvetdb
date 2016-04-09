@@ -1,0 +1,24 @@
+{{ define "title" }}Profile{{ end }}
+{{ define "content" }}
+<h1>Change Password</h1>
+{{with .Message}}
+<div>{{.}}</div>
+{{end}}
+<form action="/save/changepassword" method="POST">
+  <div>
+    <label for="currentPass">Current Password</label>
+    <input type="password" name="currentPass" id="currentPass">
+  </div>
+  <div>
+    <label for="newPass">New Password</label>
+    <input type="password" name="newPass" id="newPass">
+  </div>
+  <div>
+    <label for="newPass">New Password (Again)</label>
+    <input type="password" name="newPassAgain" id="newPassAgain">
+  </div>
+  <div>
+    <button type="submit" class="btn btn-default">Submit</button>
+  </div>
+</form>
+{{ end }}

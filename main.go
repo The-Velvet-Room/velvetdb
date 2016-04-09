@@ -8,16 +8,20 @@ import (
 	"path/filepath"
 	"sort"
 
+	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/mux"
 	"github.com/oxtoacart/bpool"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Page struct {
-	User *User
-	Data interface{}
+	User             *User
+	PermissionLevels PermissionLevels
+	Data             interface{}
 }
+
+type key int
+
+const UserKey key = 0
 
 var siteConfiguration *Configuration
 var templates map[string]*template.Template
@@ -55,19 +59,15 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	buf := bufpool.Get()
 	defer bufpool.Put(buf)
 
-	email, ok := isLoggedIn(r)
 	var user *User
-	if ok {
-		session := dataStore.GetSession()
-		defer session.Close()
-		user = fetchUserByEmail(session, email)
-	} else {
-		user = nil
+	if email, ok := isLoggedIn(r); ok {
+		user = fetchUserByEmail(email)
 	}
 
 	page := Page{
-		User: user,
-		Data: data,
+		User:             user,
+		PermissionLevels: getPermissionLevels(),
+		Data:             data,
 	}
 
 	err := tmpl.ExecuteTemplate(buf, "base", page)
@@ -81,57 +81,45 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	buf.WriteTo(w)
 }
 
-func addGameHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
-	// get players
-	players := fetchPlayers(session)
-
-	gameTypes := fetchGameTypes(session)
-
-	data := struct {
-		Players   []Player
-		GameTypes []GameType
-	}{
-		players,
-		gameTypes,
-	}
-
-	renderTemplate(w, r, "addGame", data)
-}
-
 func viewHandler(w http.ResponseWriter, r *http.Request) {
-	session := dataStore.GetSession()
-	defer session.Close()
+	players := fetchPlayers()
+	playerDict := make(map[string]Player)
+	rankDict := make(map[string]*EloDict)
 
-	c := getPlayerCollection(session)
-	players := c.Find(nil).Iter()
-
-	playerDict := make(map[bson.ObjectId]*EloDict)
-
-	var result Player
-	for players.Next(&result) {
-		playerDict[result.ID] = &EloDict{Rank: 1000, Player: result}
+	for _, p := range players {
+		playerDict[p.ID] = p
 	}
 
-	gameSession := getGameCollection(session)
-	games := gameSession.Find(nil).Sort("date").Iter()
+	c, err := getMatchTable().OrderBy("date").Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	e := &Elo{k: 32}
 
-	var gameResult Game
-	for games.Next(&gameResult) {
-		expectedScore1 := e.getExpected(playerDict[gameResult.Player1].Rank, playerDict[gameResult.Player2].Rank)
-		expectedScore2 := e.getExpected(playerDict[gameResult.Player2].Rank, playerDict[gameResult.Player1].Rank)
+	var m Match
+	for c.Next(&m) {
+		if _, ok := rankDict[m.Player1]; !ok {
+			rankDict[m.Player1] = NewEloDict(playerDict[m.Player1])
+		}
+		if _, ok := rankDict[m.Player2]; !ok {
+			rankDict[m.Player2] = NewEloDict(playerDict[m.Player2])
+		}
+		expectedScore1 := e.getExpected(rankDict[m.Player1].Rank, rankDict[m.Player2].Rank)
+		expectedScore2 := e.getExpected(rankDict[m.Player2].Rank, rankDict[m.Player1].Rank)
 
-		player1results := float64(gameResult.Player1score) / float64(gameResult.Player1score+gameResult.Player2score)
+		player1results := float64(m.Player1score) / float64(m.Player1score+m.Player2score)
 
-		playerDict[gameResult.Player1].Rank = e.updateRating(expectedScore1, player1results, playerDict[gameResult.Player1].Rank)
-		playerDict[gameResult.Player2].Rank = e.updateRating(expectedScore2, 1-player1results, playerDict[gameResult.Player2].Rank)
+		rankDict[m.Player1].Rank = e.updateRating(expectedScore1, player1results, rankDict[m.Player1].Rank)
+		rankDict[m.Player2].Rank = e.updateRating(expectedScore2, 1-player1results, rankDict[m.Player2].Rank)
 	}
 
-	ranks := []*EloDict{}
-	for _, v := range playerDict {
-		ranks = append(ranks, v)
+	ranks := make([]*EloDict, len(rankDict))
+	idx := 0
+	for _, v := range rankDict {
+		ranks[idx] = v
+		idx++
 	}
 
 	sort.Sort(ByRank(ranks))
@@ -139,26 +127,64 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "view", ranks)
 }
 
+func initializeTables() {
+	r.DBCreate("velvetdb").Run(dataStore.GetSession())
+	r.TableCreate("users").Run(dataStore.GetSession())
+	r.TableCreate("players").Run(dataStore.GetSession())
+	r.TableCreate("gametypes").Run(dataStore.GetSession())
+	r.TableCreate("matches").Run(dataStore.GetSession())
+	r.TableCreate("tournaments").Run(dataStore.GetSession())
+	r.TableCreate("tournamentresults").Run(dataStore.GetSession())
+	r.TableCreate("sessions").Run(dataStore.GetSession())
+}
+
 func isAdminMiddleware(next func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, ok := isLoggedIn(r)
-		if ok {
-			next(w, r)
-		} else {
+		if !ok {
 			http.NotFound(w, r)
+			return
 		}
+		next(w, r)
+	})
+}
+
+func hasPermissionMiddleware(next func(http.ResponseWriter, *http.Request), permission int) func(http.ResponseWriter, *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		email, ok := isLoggedIn(r)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		u := fetchUserByEmail(email)
+		if u == nil {
+			http.NotFound(w, r)
+			return
+		}
+		if !u.HasPermission(permission) {
+			http.NotFound(w, r)
+			return
+		}
+		next(w, r)
 	})
 }
 
 func main() {
 	siteConfiguration = getConfiguration()
-	session, err := mgo.Dial(siteConfiguration.MongoConnection)
+	session, err := r.Connect(r.ConnectOpts{
+		Address:  siteConfiguration.RethinkConnection,
+		Database: "velvetdb",
+	})
 	if err != nil {
-		panic(err)
+		log.Fatalln(err.Error())
 	}
+	dataStore = &DataStore{session: session}
+
+	initializeTables()
+	initializeSessionStore()
 
 	bufpool = bpool.NewBufferPool(64)
-	dataStore = &DataStore{session: session}
+
 	parseTemplates()
 
 	r := mux.NewRouter()
@@ -168,25 +194,39 @@ func main() {
 		http.FileServer(http.Dir("assets/"))))
 
 	r.HandleFunc("/", viewHandler)
+	r.HandleFunc("/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(editPlayerHandler))
 	r.HandleFunc("/player/{playerNick:[a-zA-Z0-9]+}", playerViewHandler)
+	r.HandleFunc("/addplayer", isAdminMiddleware(addPlayerHandler))
 	r.HandleFunc("/addgametype", isAdminMiddleware(addGameTypeHandler))
-	r.HandleFunc("/addgame", isAdminMiddleware(addGameHandler))
+	r.HandleFunc("/addmatch", isAdminMiddleware(addMatchHandler))
 	r.HandleFunc("/addtournament", isAdminMiddleware(addTournamentHandler))
+	r.HandleFunc("/tournaments", viewTournamentsHandler)
+	r.HandleFunc("/tournaments/{gametype}", viewTournamentsHandler)
+	r.HandleFunc("/save/addmatch", isAdminMiddleware(saveMatchHandler))
+	r.HandleFunc("/save/addplayer", isAdminMiddleware(savePlayerHandler))
+	r.HandleFunc("/save/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(saveEditPlayerHandler))
 	r.HandleFunc("/save/addgametype", isAdminMiddleware(saveGameTypeHandler))
 	r.HandleFunc("/save/addtournament", isAdminMiddleware(saveTournamentHandler))
-	r.HandleFunc("/save/addtournamentmatch/{tournament:[a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchHandler))
-	r.HandleFunc("/tournament/{tournament:[a-zA-Z0-9]+}", viewTournamentHandler)
+	r.HandleFunc("/save/addtournamentmatch/{tournament:[-a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchesHandler))
+	r.HandleFunc("/tournament/addmatches/{tournament:[-a-zA-Z0-9]+}", isAdminMiddleware(addTournamentMatchesHandler))
+	r.HandleFunc("/tournament/{tournament:[-a-zA-Z0-9]+}", viewTournamentHandler)
 
 	// First run
 	r.HandleFunc("/firstrun", firstRunHandler)
 	r.HandleFunc("/firstrun/save", saveFirstRunHandler)
 
+	// Faceoff
+	r.HandleFunc("/faceoff", faceoffHandler)
+
 	// auth
-	r.HandleFunc("/register", isAdminMiddleware(registerUserHandler))
+	r.HandleFunc("/users", hasPermissionMiddleware(userListHandler, getPermissionLevels().CanModifyUsers))
+	r.HandleFunc("/profile", isAdminMiddleware(userProfileHandler))
+	r.HandleFunc("/adduser", hasPermissionMiddleware(registerUserHandler, getPermissionLevels().CanModifyUsers))
 	r.HandleFunc("/login", loginUserHandler)
 	r.HandleFunc("/save/login", saveLoginUserHandler)
 	r.HandleFunc("/save/logout", saveLogoutUserHandler)
-	r.HandleFunc("/save/register", isAdminMiddleware(saveRegisterUserHandler))
+	r.HandleFunc("/save/adduser", hasPermissionMiddleware(saveRegisterUserHandler, getPermissionLevels().CanModifyUsers))
+	r.HandleFunc("/save/changepassword", isAdminMiddleware(saveChangePasswordHandler))
 
 	fmt.Println("We're up and running!")
 

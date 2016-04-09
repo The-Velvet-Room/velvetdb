@@ -6,58 +6,66 @@ import (
 	"regexp"
 	"strings"
 
+	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/mux"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type Player struct {
-	ID         bson.ObjectId `bson:"_id,omitempty"`
-	Nickname   string
-	Tag        string
-	Aliases    []string
-	Image      string
-	URLPath    string
-	FirstName  string
-	LastName   string
-	Facts      []string
-	Characters []string
+	ID         string   `gorethink:"id,omitempty"`
+	Nickname   string   `gorethink:"nickname"`
+	Tag        string   `gorethink:"tag"`
+	Aliases    []string `gorethink:"aliases"`
+	Image      string   `gorethink:"image"`
+	URLPath    string   `gorethink:"urlpath"`
+	FirstName  string   `gorethink:"first_name"`
+	LastName   string   `gorethink:"last_name"`
+	Facts      []string `gorethink:"facts"`
+	Characters []string `gorethink:"characters"`
+	Twitter    string   `gorethink:"twitter"`
+	Twitch     string   `gorethink:"twitch"`
 }
 
 var alphanumeric = regexp.MustCompile("[^A-Za-z0-9]+")
 
-func getPlayerCollection(session *mgo.Session) *mgo.Collection {
-	return session.DB("test").C("players")
+func getPlayerTable() r.Term {
+	return r.Table("players")
 }
 
-func addPlayer(session *mgo.Session, player Player) bson.ObjectId {
-	c := getPlayerCollection(session)
-	if !player.ID.Valid() {
-		player.ID = bson.NewObjectId()
-	}
+func addPlayer(player Player) string {
 	if player.URLPath == "" {
 		player.URLPath = strings.ToLower(alphanumeric.ReplaceAllString(player.Nickname, ""))
 		if player.URLPath == "" {
-			player.URLPath = player.ID.Hex()
+			player.ID = dataStore.GetID()
+			player.URLPath = player.ID
 		} else {
-			_, err := fetchPlayerByURLPath(session, player.URLPath)
+			_, err := fetchPlayerByURLPath(player.URLPath)
 			// if we find a player, set the URLPath to the id
 			if err == nil {
-				player.URLPath = player.ID.Hex()
+				player.ID = dataStore.GetID()
+				player.URLPath = player.ID
 			}
 		}
 	}
-	saveErr := c.Insert(player)
-	if saveErr != nil {
-		fmt.Println(saveErr)
+	wr, err := getPlayerTable().Insert(player).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	if len(wr.GeneratedKeys) != 0 {
+		return wr.GeneratedKeys[0]
 	}
 	return player.ID
 }
 
-func fetchPlayer(session *mgo.Session, id bson.ObjectId) (*Player, error) {
-	c := getPlayerCollection(session)
+func fetchPlayer(id string) (*Player, error) {
+	c, err := getPlayerTable().Get(id).Run(dataStore.GetSession())
+	defer c.Close()
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
 	var player *Player
-	err := c.FindId(id).One(&player)
+	err = c.One(&player)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -65,10 +73,17 @@ func fetchPlayer(session *mgo.Session, id bson.ObjectId) (*Player, error) {
 	return player, nil
 }
 
-func fetchPlayerByNickname(session *mgo.Session, nickname string) (*Player, error) {
-	c := getPlayerCollection(session)
+func fetchPlayerByNickname(nickname string) (*Player, error) {
+	c, err := getPlayerTable().Filter(map[string]interface{}{
+		"nickname": nickname,
+	}).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
 	var player *Player
-	err := c.Find(bson.M{"nickname": nickname}).One(&player)
+	err = c.One(&player)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -76,57 +91,131 @@ func fetchPlayerByNickname(session *mgo.Session, nickname string) (*Player, erro
 	return player, nil
 }
 
-func fetchPlayerByURLPath(session *mgo.Session, urlpath string) (*Player, error) {
-	c := getPlayerCollection(session)
-	var player *Player
-	err := c.Find(bson.M{"urlpath": urlpath}).One(&player)
+func fetchPlayerByURLPath(urlpath string) (*Player, error) {
+	c, err := getPlayerTable().Filter(map[string]interface{}{
+		"urlpath": urlpath,
+	}).Run(dataStore.GetSession())
+	defer c.Close()
 	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	var player *Player
+	err = c.One(&player)
+	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	return player, nil
 }
 
-func fetchPlayers(session *mgo.Session) []Player {
-	c := getPlayerCollection(session)
-	playerIter := c.Find(nil).Sort("nickname").Iter()
-
+func fetchPlayers() []Player {
+	c, err := getPlayerTable().OrderBy("nickname").Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
 	players := []Player{}
-	var result *Player
-	for playerIter.Next(&result) {
-		players = append(players, *result)
+	err = c.All(&players)
+	if err != nil {
+		fmt.Println(err)
 	}
 	return players
+}
+
+func addPlayerHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, "addPlayer", nil)
+}
+
+func savePlayerHandler(w http.ResponseWriter, r *http.Request) {
+	n := r.FormValue("nickname")
+	addPlayer(Player{Nickname: n})
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func saveEditPlayerHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	playerNick := vars["playerNick"]
+
+	player, err := fetchPlayerByURLPath(playerNick)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	urlpath := r.FormValue("urlpath")
+	if urlpath != player.URLPath {
+		player, _ := fetchPlayerByURLPath(urlpath)
+		if player != nil {
+			http.Redirect(w, r, "/editplayer/"+playerNick, http.StatusBadRequest)
+			return
+		}
+	}
+
+	_, err = getPlayerTable().Filter(map[string]interface{}{
+		"urlpath": playerNick,
+	}).Update(map[string]interface{}{
+		"nickname":   r.FormValue("nickname"),
+		"urlpath":    urlpath,
+		"tag":        r.FormValue("tag"),
+		"first_name": r.FormValue("firstname"),
+		"last_name":  r.FormValue("lastname"),
+	}).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	http.Redirect(w, r, "/player/"+urlpath, http.StatusFound)
+}
+
+func editPlayerHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	playerNick := vars["playerNick"]
+
+	player, err := fetchPlayerByURLPath(playerNick)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Player *Player
+	}{
+		player,
+	}
+
+	renderTemplate(w, r, "editPlayer", data)
 }
 
 func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	playerNick := vars["playerNick"]
 
-	session := dataStore.GetSession()
-	defer session.Close()
-
-	player, err := fetchPlayerByURLPath(session, playerNick)
-	if err == mgo.ErrNotFound {
+	player, err := fetchPlayerByURLPath(playerNick)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	players := fetchPlayers(session)
-	playerMap := make(map[bson.ObjectId]Player)
+	players := fetchPlayers()
+	playerMap := make(map[string]Player)
 	for _, p := range players {
 		playerMap[p.ID] = p
 	}
 
-	games := fetchGamesForPlayer(session, player.ID)
+	matches := fetchMatchesForPlayer(player.ID)
+
+	_, canEdit := isLoggedIn(r)
 
 	data := struct {
 		Player    *Player
-		Games     []Game
-		PlayerMap map[bson.ObjectId]Player
+		Matches   []Match
+		PlayerMap map[string]Player
+		CanEdit   bool
 	}{
 		player,
-		games,
+		matches,
 		playerMap,
+		canEdit,
 	}
 
 	renderTemplate(w, r, "player", data)
