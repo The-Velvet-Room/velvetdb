@@ -2,6 +2,15 @@
 {{ define "content" }}
 <h1>{{.Tournament.Name}}</h1>
 
+{{if not .Complete}}
+<div class="alert alert-warning">
+  <strong>Heads up!</strong>
+  This tournament hasn't been marked as completed. The importer will only add completed matches,
+  so you should go to <a href="{{.Tournament.BracketURL}}">the bracket page</a> and double-check
+  that every match has a score that should.
+</div>
+{{end}}
+
 <form id="form" action="/save/addtournamentmatch/{{.Tournament.ID}}" method="POST">
   <table class="table">
     <thead>
@@ -11,7 +20,6 @@
     </thead>
     <tbody>
       {{range .Participants}}
-      <!--Player 1-->
       <tr>
         <td>{{.Name}}</td>
         <td class="col-md-4">

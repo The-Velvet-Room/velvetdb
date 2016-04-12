@@ -1,0 +1,24 @@
+{{ define "title" }}Rankings{{with .SelectedGameType}} - {{.Name}}{{end}}{{ end }}
+{{ define "content" }}
+<h1>Rankings{{with .SelectedGameType}} - {{.Name}}{{end}}</h1>
+
+<div>
+  {{if .SelectedGameType}}
+    <ul>
+    {{range .Ranks}}
+      <li><a href="/player/{{.Player.URLPath}}">{{.Player.Nickname}}</a> - {{.Rank}}</li>
+    {{end}}
+    </ul>
+  {{else}}
+    <select id="gametype" name="gametype">
+      <option value="">Select a Game</option>
+      {{range .GameTypes}}
+      <option value="{{ .URLPath }}">{{ .Name }}</option>
+      {{end}}
+    </select>
+  {{end}}
+</div>
+{{ end }}
+{{ define "scripts" }}
+<script src="/assets/js/rankings.js"></script>
+{{ end }}

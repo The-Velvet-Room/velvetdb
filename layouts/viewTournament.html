@@ -3,6 +3,25 @@
 {{ define "content" }}
   <h1>{{.Tournament.Name}}</h1>
 
+  {{with .PoolOf}}
+  <p>Pool of:
+    <a href="/tournament/{{.ID}}">{{.Name}}</a>
+  </p>
+  {{end}}
+
+  {{if $.IsLoggedIn}}
+  <a href="/addpool/{{$.Tournament.ID}}">[ Add Pool ]</a>
+  {{end}}
+
+  {{with .Pools}}
+    <h3>Pools</h3>
+    {{range .}}
+      <div><a href="/tournament/{{.ID}}">{{.Name}}</a></div>
+    {{end}}
+  {{end}}
+
+
+  <h3>Matches</h3>
   {{range .Matches}}
     {{$p1 := index $.PlayerMap .Player1}}
     {{$p2 := index $.PlayerMap .Player2}}

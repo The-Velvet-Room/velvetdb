@@ -1,4 +1,4 @@
-### velvetdb
+# velvetdb [![Build Status](https://travis-ci.org/The-Velvet-Room/velvetdb.svg?branch=master)](https://travis-ci.org/The-Velvet-Room/velvetdb)
 
 A database for player information.
 

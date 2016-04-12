@@ -6,10 +6,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	r "github.com/dancannon/gorethink"
-
-	"time"
 
 	"github.com/dguenther/go-challonge"
 	"github.com/gorilla/mux"
@@ -21,6 +20,7 @@ type Tournament struct {
 	Name        string    `gorethink:"name"`
 	BracketURL  string    `gorethink:"bracket_url"`
 	VODUrl      string    `gorethink:"vod_url"`
+	PoolOf      string    `gorethink:"pool_of"`
 	DateStart   time.Time `gorethink:"date_start"`
 	DateEnd     time.Time `gorethink:"date_end"`
 	PlayerCount int       `gorethink:"player_count"`
@@ -73,19 +73,19 @@ func fetchTournament(id string) (*Tournament, error) {
 	return &t, nil
 }
 
-func fetchTournaments(gametype string, inProgress bool) (*[]Tournament, error) {
+func fetchTournaments(gametype string, editing bool) (*[]Tournament, error) {
 	query := getTournamentTable()
+	filter := map[string]interface{}{
+		"pool_of": "",
+	}
+
 	if gametype != "" {
-		query = query.Filter(map[string]interface{}{
-			"gametype": gametype,
-		})
+		filter["gametype"] = gametype
 	}
-	if !inProgress {
-		query = query.Filter(map[string]interface{}{
-			"last_match_id": "",
-		})
+	if !editing {
+		filter["editing"] = false
 	}
-	c, err := query.OrderBy("date_start").Run(dataStore.GetSession())
+	c, err := query.Filter(filter).OrderBy(r.Desc("date_start")).Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
@@ -99,6 +99,82 @@ func fetchTournaments(gametype string, inProgress bool) (*[]Tournament, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+func fetchTournamentPools(ID string) ([]*Tournament, error) {
+	query := getTournamentTable()
+	c, err := query.Filter(map[string]interface{}{
+		"pool_of": ID,
+	}).OrderBy("name").Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	var t []*Tournament
+	err = c.All(&t)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return t, nil
+}
+
+func addPoolHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Tournament *Tournament
+	}{
+		t,
+	}
+
+	renderTemplate(w, r, "addPool", data)
+}
+
+func savePoolHandler(w http.ResponseWriter, r *http.Request) {
+	poolOf := r.FormValue("poolOf")
+	name := r.FormValue("name")
+	url := r.FormValue("url")
+
+	c, err := getTournamentTable().Filter(map[string]interface{}{
+		"bracket_url": url,
+	}).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// if we find a tournament with the same bracket url,
+	// redirect to that tournament
+	var t Tournament
+	if !c.IsNil() {
+		c.One(&t)
+		http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
+		return
+	}
+
+	ct := fetchChallongeTournament(url)
+
+	id := addTournament(Tournament{
+		Name:        name,
+		BracketURL:  url,
+		PoolOf:      poolOf,
+		GameType:    t.GameType,
+		DateStart:   *ct.StartedAt,
+		DateEnd:     *ct.UpdatedAt,
+		PlayerCount: ct.ParticipantsCount,
+		Editing:     true,
+	})
+
+	http.Redirect(w, r, "/tournament/"+id, http.StatusFound)
 }
 
 func addTournamentHandler(w http.ResponseWriter, r *http.Request) {
@@ -165,10 +241,12 @@ func addTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Tournament   *Tournament
 		Participants []*challonge.Participant
+		Complete     bool
 		Players      []Player
 	}{
 		t,
 		ct.Participants,
+		ct.State == "complete",
 		players,
 	}
 	renderTemplate(w, r, "addTournamentMatch", data)
@@ -182,6 +260,18 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.NotFound(w, r)
 		return
+	}
+
+	// Find the ID of the root tournament
+	var rootTournamentID string
+	if t.PoolOf == "" {
+		rootTournamentID = t.ID
+	} else {
+		ct, _ := fetchTournament(t.PoolOf)
+		for ct.PoolOf != "" {
+			ct, _ = fetchTournament(ct.PoolOf)
+		}
+		rootTournamentID = ct.ID
 	}
 
 	playerMap := make(map[string]string)
@@ -203,41 +293,77 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ct := fetchChallongeTournament(t.BracketURL)
+
 	// Add tournament results
+	oldResults, _ := fetchResultsForTournament(rootTournamentID)
+	resultDict := map[string]*TournamentResult{}
+	for _, r := range oldResults {
+		resultDict[r.Player] = r
+	}
+
 	newResults := []*TournamentResult{}
 	for _, p := range ct.Participants {
 		id := strconv.Itoa(p.Id)
-		newResults = append(newResults, &TournamentResult{
-			Tournament: t.ID,
+		// If we've already saved a result for this player,
+		// don't save another one
+		if _, ok := resultDict[playerMap[id]]; ok {
+			continue
+		}
+
+		// Add tournament results for all players we haven't added yet.
+		tr := &TournamentResult{
+			Tournament: rootTournamentID,
 			Player:     playerMap[id],
-			Place:      p.FinalRank,
-			Seed:       p.Seed,
-		})
+			Place:      0,
+			Seed:       0,
+		}
+		// Only add the place and seed of the player if it's the final bracket.
+		if t.PoolOf == "" {
+			tr.Place = p.FinalRank
+			tr.Seed = p.Seed
+		}
+		newResults = append(newResults, tr)
 	}
 	_, err = getTournamentResultTable().Insert(newResults).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	// add tournament matches
+	// Add tournament matches
 	newMatches := []*Match{}
 	for _, m := range ct.Matches {
-		scoreSplit := strings.Split(m.Scores, "-")
+		// Only add completed matches
+		if m.State != "complete" {
+			continue
+		}
+		scoreSplit := strings.SplitN(m.Scores, "-", 2)
 		m.PlayerOneScore, _ = strconv.Atoi(scoreSplit[0])
 		m.PlayerTwoScore, _ = strconv.Atoi(scoreSplit[1])
 		p1 := strconv.Itoa(m.PlayerOneId)
 		p2 := strconv.Itoa(m.PlayerTwoId)
+		var p1prereq *string
+		var p2prereq *string
+		if m.PlayerOnePrereqMatch != nil {
+			p1prereq = new(string)
+			*p1prereq = strconv.Itoa(*m.PlayerOnePrereqMatch)
+		}
+		if m.PlayerTwoPrereqMatch != nil {
+			p2prereq = new(string)
+			*p2prereq = strconv.Itoa(*m.PlayerTwoPrereqMatch)
+		}
 		tMatchID := strconv.Itoa(m.Id)
 		newMatches = append(newMatches, &Match{
-			Date:              *m.UpdatedAt,
-			GameType:          t.GameType,
-			Tournament:        t.ID,
-			TournamentMatchID: tMatchID,
-			Player1:           playerMap[p1],
-			Player2:           playerMap[p2],
-			Player1score:      m.PlayerOneScore,
-			Player2score:      m.PlayerTwoScore,
-			Round:             m.Round,
+			Date:                       *m.UpdatedAt,
+			GameType:                   t.GameType,
+			Tournament:                 t.ID,
+			TournamentMatchID:          tMatchID,
+			Player1:                    playerMap[p1],
+			Player2:                    playerMap[p2],
+			Player1PrevTournamentMatch: p1prereq,
+			Player2PrevTournamentMatch: p2prereq,
+			Player1score:               m.PlayerOneScore,
+			Player2score:               m.PlayerTwoScore,
+			Round:                      m.Round,
 		})
 	}
 	_, err = getMatchTable().Insert(newMatches).RunWrite(dataStore.GetSession())
@@ -274,14 +400,28 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		playerMap[p.ID] = p
 	}
 
+	var poolOf *Tournament
+	if t.PoolOf != "" {
+		poolOf, _ = fetchTournament(t.PoolOf)
+	}
+
+	pools, _ := fetchTournamentPools(t.ID)
+	_, logged := isLoggedIn(r)
+
 	data := struct {
 		Tournament *Tournament
+		PoolOf     *Tournament
+		Pools      []*Tournament
 		Matches    []Match
 		PlayerMap  map[string]Player
+		IsLoggedIn bool
 	}{
 		t,
+		poolOf,
+		pools,
 		matches,
 		playerMap,
+		logged,
 	}
 
 	renderTemplate(w, r, "viewTournament", data)
