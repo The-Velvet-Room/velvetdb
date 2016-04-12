@@ -267,7 +267,7 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	if t.PoolOf == "" {
 		rootTournamentID = t.ID
 	} else {
-		ct, _ := fetchTournament(t.PoolOf);
+		ct, _ := fetchTournament(t.PoolOf)
 		for ct.PoolOf != "" {
 			ct, _ = fetchTournament(ct.PoolOf)
 		}
@@ -410,8 +410,8 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		Tournament *Tournament
-		PoolOf *Tournament
-		Pools []*Tournament
+		PoolOf     *Tournament
+		Pools      []*Tournament
 		Matches    []Match
 		PlayerMap  map[string]Player
 		IsLoggedIn bool
