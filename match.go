@@ -10,16 +10,18 @@ import (
 )
 
 type Match struct {
-	ID                string    `gorethink:"id,omitempty"`
-	Tournament        string    `gorethink:"tournament,omitempty"`
-	TournamentMatchID string    `gorethink:"tournament_match_id"`
-	GameType          string    `gorethink:"gametype"`
-	Date              time.Time `gorethink:"date"`
-	Player1           string    `gorethink:"player1"`
-	Player2           string    `gorethink:"player2"`
-	Player1score      int       `gorethink:"player1_score"`
-	Player2score      int       `gorethink:"player2_score"`
-	Round             int       `gorethink:"round"`
+	ID                         string    `gorethink:"id,omitempty"`
+	Tournament                 string    `gorethink:"tournament,omitempty"`
+	TournamentMatchID          string    `gorethink:"tournament_match_id"`
+	Player1PrevTournamentMatch *string   `gorethink:"p1_prev_tm"`
+	Player2PrevTournamentMatch *string   `gorethink:"p2_prev_tm"`
+	GameType                   string    `gorethink:"gametype"`
+	Date                       time.Time `gorethink:"date"`
+	Player1                    string    `gorethink:"player1"`
+	Player2                    string    `gorethink:"player2"`
+	Player1score               int       `gorethink:"player1_score"`
+	Player2score               int       `gorethink:"player2_score"`
+	Round                      int       `gorethink:"round"`
 }
 
 func getMatchTable() r.Term {

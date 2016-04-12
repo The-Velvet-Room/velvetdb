@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
-	"sort"
 
 	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/mux"
@@ -81,50 +80,8 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	buf.WriteTo(w)
 }
 
-func viewHandler(w http.ResponseWriter, r *http.Request) {
-	players := fetchPlayers()
-	playerDict := make(map[string]Player)
-	rankDict := make(map[string]*EloDict)
-
-	for _, p := range players {
-		playerDict[p.ID] = p
-	}
-
-	c, err := getMatchTable().OrderBy("date").Run(dataStore.GetSession())
-	defer c.Close()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	e := &Elo{k: 32}
-
-	var m Match
-	for c.Next(&m) {
-		if _, ok := rankDict[m.Player1]; !ok {
-			rankDict[m.Player1] = NewEloDict(playerDict[m.Player1])
-		}
-		if _, ok := rankDict[m.Player2]; !ok {
-			rankDict[m.Player2] = NewEloDict(playerDict[m.Player2])
-		}
-		expectedScore1 := e.getExpected(rankDict[m.Player1].Rank, rankDict[m.Player2].Rank)
-		expectedScore2 := e.getExpected(rankDict[m.Player2].Rank, rankDict[m.Player1].Rank)
-
-		player1results := float64(m.Player1score) / float64(m.Player1score+m.Player2score)
-
-		rankDict[m.Player1].Rank = e.updateRating(expectedScore1, player1results, rankDict[m.Player1].Rank)
-		rankDict[m.Player2].Rank = e.updateRating(expectedScore2, 1-player1results, rankDict[m.Player2].Rank)
-	}
-
-	ranks := make([]*EloDict, len(rankDict))
-	idx := 0
-	for _, v := range rankDict {
-		ranks[idx] = v
-		idx++
-	}
-
-	sort.Sort(ByRank(ranks))
-
-	renderTemplate(w, r, "view", ranks)
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, "home", nil)
 }
 
 func initializeTables() {
@@ -193,13 +150,15 @@ func main() {
 	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/",
 		http.FileServer(http.Dir("assets/"))))
 
-	r.HandleFunc("/", viewHandler)
-	r.HandleFunc("/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(editPlayerHandler))
-	r.HandleFunc("/player/{playerNick:[a-zA-Z0-9]+}", playerViewHandler)
+	r.HandleFunc("/", homeHandler)
+	r.HandleFunc("/editplayer/{playerNick:[-a-zA-Z0-9]+}", isAdminMiddleware(editPlayerHandler))
+	r.HandleFunc("/player/{playerNick:[-a-zA-Z0-9]+}", playerViewHandler)
 	r.HandleFunc("/addplayer", isAdminMiddleware(addPlayerHandler))
 	r.HandleFunc("/addgametype", isAdminMiddleware(addGameTypeHandler))
 	r.HandleFunc("/addmatch", isAdminMiddleware(addMatchHandler))
 	r.HandleFunc("/addtournament", isAdminMiddleware(addTournamentHandler))
+	r.HandleFunc("/addpool/{tournament:[-a-zA-Z0-9]+}", isAdminMiddleware(addPoolHandler))
+	r.HandleFunc("/save/addpool", isAdminMiddleware(savePoolHandler))
 	r.HandleFunc("/tournaments", viewTournamentsHandler)
 	r.HandleFunc("/tournaments/{gametype}", viewTournamentsHandler)
 	r.HandleFunc("/save/addmatch", isAdminMiddleware(saveMatchHandler))
@@ -217,6 +176,10 @@ func main() {
 
 	// Faceoff
 	r.HandleFunc("/faceoff", faceoffHandler)
+
+	// Rankings
+	r.HandleFunc("/rankings", rankingsHandler)
+	r.HandleFunc("/rankings/{gametype}", rankingsHandler)
 
 	// auth
 	r.HandleFunc("/users", hasPermissionMiddleware(userListHandler, getPermissionLevels().CanModifyUsers))
