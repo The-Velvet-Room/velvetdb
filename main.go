@@ -163,7 +163,7 @@ func main() {
 	r.HandleFunc("/tournaments/{gametype}", viewTournamentsHandler)
 	r.HandleFunc("/save/addmatch", isAdminMiddleware(saveMatchHandler))
 	r.HandleFunc("/save/addplayer", isAdminMiddleware(savePlayerHandler))
-	r.HandleFunc("/save/editplayer/{playerNick:[a-zA-Z0-9]+}", isAdminMiddleware(saveEditPlayerHandler))
+	r.HandleFunc("/save/editplayer/{playerNick:[-a-zA-Z0-9]+}", isAdminMiddleware(saveEditPlayerHandler))
 	r.HandleFunc("/save/addgametype", isAdminMiddleware(saveGameTypeHandler))
 	r.HandleFunc("/save/addtournament", isAdminMiddleware(saveTournamentHandler))
 	r.HandleFunc("/save/addtournamentmatch/{tournament:[-a-zA-Z0-9]+}", isAdminMiddleware(saveTournamentMatchesHandler))
