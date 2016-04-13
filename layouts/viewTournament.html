@@ -20,6 +20,11 @@
     {{end}}
   {{end}}
 
+  <h3>Results</h3>
+  {{range .Results}}
+    {{$p := index $.PlayerMap .Player}}
+    <div>{{.Place}} - Seeded {{.Seed}} - {{$p.Nickname}}</div>
+  {{end}}
 
   <h3>Matches</h3>
   {{range .Matches}}

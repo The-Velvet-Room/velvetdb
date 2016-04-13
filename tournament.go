@@ -408,11 +408,13 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pools, _ := fetchTournamentPools(t.ID)
+	results, _ := fetchResultsForTournament(t.ID)
 
 	data := struct {
 		Tournament *Tournament
 		PoolOf     *Tournament
 		Pools      []*Tournament
+		Results    []*TournamentResult
 		Matches    []Match
 		PlayerMap  map[string]Player
 		IsLoggedIn bool
@@ -420,6 +422,7 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		t,
 		poolOf,
 		pools,
+		results,
 		matches,
 		playerMap,
 		logged,
