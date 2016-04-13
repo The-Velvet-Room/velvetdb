@@ -16,14 +16,26 @@
     {{else}}
       L
     {{end}}
-    vs. <span>{{$p2.Nickname}} ({{.Player1score}}-{{.Player2score}})</span>
+    vs. <span>
+      <a href="/player/{{$p2.URLPath}}">{{$p2.Nickname}}</a>
+        ({{.Player1score}}-{{.Player2score}})
+      </span>
   {{else}}
     {{if gt .Player2score .Player1score}}
       W
     {{else}}
       L
     {{end}}
-    vs. <span>{{$p1.Nickname}} ({{.Player2score}}-{{.Player1score}})</span>
+    vs. <span>
+      <a href="/player/{{$p1.URLPath}}">{{$p1.Nickname}}</a>
+      ({{.Player2score}}-{{.Player1score}})
+      </span>
+  {{end}}
+  {{if .Hidden}}
+  (Hidden)
+  {{end}}
+  {{if $.CanEdit}}
+  <a href="/edit/match/{{.ID}}">[Edit]</a>
   {{end}}
 </div>
 {{end}}

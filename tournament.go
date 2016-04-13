@@ -393,7 +393,9 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matches := fetchMatchesForTournament(t.ID)
+	_, logged := isLoggedIn(r)
+
+	matches := fetchMatchesForTournament(t.ID, logged)
 	players := fetchPlayers()
 	playerMap := make(map[string]Player)
 	for _, p := range players {
@@ -406,7 +408,6 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pools, _ := fetchTournamentPools(t.ID)
-	_, logged := isLoggedIn(r)
 
 	data := struct {
 		Tournament *Tournament
