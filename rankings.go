@@ -19,6 +19,7 @@ func rankPlayers(gameType string) map[string]*EloDict {
 
 	c, err := getMatchTable().Filter(map[string]interface{}{
 		"gametype": gameType,
+		"hidden":   false,
 	}).OrderBy("date").Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {

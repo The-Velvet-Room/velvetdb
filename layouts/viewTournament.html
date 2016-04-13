@@ -26,7 +26,16 @@
     {{$p1 := index $.PlayerMap .Player1}}
     {{$p2 := index $.PlayerMap .Player2}}
     <div>
-      {{$p1.Nickname}} vs {{$p2.Nickname}} ({{.Player1score}} - {{.Player2score}})
+      <a href="/player/{{$p1.URLPath}}">{{$p1.Nickname}}</a>
+      vs
+      <a href="/player/{{$p2.URLPath}}">{{$p2.Nickname}}</a>
+        ({{.Player1score}} - {{.Player2score}})
+      {{if .Hidden}}
+      (Hidden)
+      {{end}}
+      {{if $.IsLoggedIn}}
+      <a href="/edit/match/{{.ID}}">[Edit]</a>
+      {{end}}
     </div>
   {{end}}
 {{ end }}

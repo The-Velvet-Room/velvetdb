@@ -7,6 +7,7 @@ import (
 	"time"
 
 	r "github.com/dancannon/gorethink"
+	"github.com/gorilla/mux"
 )
 
 type Match struct {
@@ -22,17 +23,35 @@ type Match struct {
 	Player1score               int       `gorethink:"player1_score"`
 	Player2score               int       `gorethink:"player2_score"`
 	Round                      int       `gorethink:"round"`
+	Hidden                     bool      `gorethink:"hidden"`
 }
 
 func getMatchTable() r.Term {
 	return r.Table("matches")
 }
 
-func fetchMatchesForPlayer(id string) []Match {
-	c, err := getMatchTable().Filter(r.Or(
-		r.Row.Field("player1").Eq(id),
-		r.Row.Field("player2").Eq(id),
-	)).OrderBy(r.Desc("date")).Run(dataStore.GetSession())
+func fetchMatch(id string) (*Match, error) {
+	c, err := getMatchTable().Get(id).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+	var m *Match
+	err = c.One(&m)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func fetchMatchesForPlayer(id string, includeHidden bool) []Match {
+	filter := r.Or(r.Row.Field("player1").Eq(id), r.Row.Field("player2").Eq(id))
+	if !includeHidden {
+		filter = r.And(r.Row.Field("hidden").Eq(false), filter)
+	}
+
+	c, err := getMatchTable().Filter(filter).
+		OrderBy(r.Desc("date")).Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
@@ -45,11 +64,15 @@ func fetchMatchesForPlayer(id string) []Match {
 	return matches
 }
 
-func fetchMatchesForPlayers(p1 string, p2 string) *[]Match {
-	c, err := getMatchTable().Filter(r.Or(
+func fetchMatchesForPlayers(p1 string, p2 string, includeHidden bool) *[]Match {
+	filter := r.Or(
 		r.Row.Field("player1").Eq(p1).And(r.Row.Field("player2").Eq(p2)),
 		r.Row.Field("player1").Eq(p2).And(r.Row.Field("player2").Eq(p1)),
-	)).Run(dataStore.GetSession())
+	)
+	if !includeHidden {
+		r.And(filter, r.Row.Field("hidden").Eq(false))
+	}
+	c, err := getMatchTable().Filter(filter).Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
@@ -62,10 +85,13 @@ func fetchMatchesForPlayers(p1 string, p2 string) *[]Match {
 	return &matches
 }
 
-func fetchMatchesForTournament(id string) []Match {
-	c, err := getMatchTable().Filter(map[string]interface{}{
-		"tournament": id,
-	}).OrderBy("date").Run(dataStore.GetSession())
+func fetchMatchesForTournament(id string, includeHidden bool) []Match {
+	filter := map[string]interface{}{"tournament": id}
+	if !includeHidden {
+		filter["hidden"] = false
+	}
+
+	c, err := getMatchTable().Filter(filter).OrderBy("date").Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
@@ -101,6 +127,77 @@ func addMatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, r, "addMatch", data)
+}
+
+func editMatchHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	matchID := vars["match"]
+
+	players := fetchPlayers()
+
+	m, err := fetchMatch(matchID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Match   *Match
+		Players []Player
+		Saved   bool
+	}{
+		m,
+		players,
+		false,
+	}
+	renderTemplate(w, r, "editMatch", data)
+}
+
+func saveEditMatchHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	matchID := vars["match"]
+
+	_, err := fetchMatch(matchID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	p1 := r.FormValue("p1")
+	p2 := r.FormValue("p2")
+	p1score, _ := strconv.Atoi(r.FormValue("p1score"))
+	p2score, _ := strconv.Atoi(r.FormValue("p2score"))
+	hidden := r.FormValue("hidden") == "hidden"
+
+	wr, werr := getMatchTable().Get(matchID).Update(map[string]interface{}{
+		"hidden":        hidden,
+		"player1":       p1,
+		"player2":       p2,
+		"player1_score": p1score,
+		"player2_score": p2score,
+	}).RunWrite(dataStore.GetSession())
+	if werr != nil {
+		fmt.Println(err)
+	}
+	if wr.Errors > 0 {
+		fmt.Println(wr.FirstError)
+	}
+
+	newMatch, err := fetchMatch(matchID)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	data := struct {
+		Match   *Match
+		Players []Player
+		Saved   bool
+	}{
+		newMatch,
+		fetchPlayers(),
+		true,
+	}
+	renderTemplate(w, r, "editMatch", data)
 }
 
 func saveMatchHandler(w http.ResponseWriter, r *http.Request) {

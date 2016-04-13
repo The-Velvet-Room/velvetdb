@@ -21,7 +21,8 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 				player2 = pl
 			}
 		}
-		matches = fetchMatchesForPlayers(player1.ID, player2.ID)
+		_, logged := isLoggedIn(r)
+		matches = fetchMatchesForPlayers(player1.ID, player2.ID, logged)
 		for _, g := range *matches {
 			if g.Player1 == player1.ID {
 				player1matches += g.Player1score
