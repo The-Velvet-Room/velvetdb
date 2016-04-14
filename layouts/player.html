@@ -9,7 +9,10 @@
 
 <h3>Recent Results</h3>
 {{range .Results}}
-{{.Place}}
+<div>
+  {{.Place}} - <a href="/tournament/{{.Tournament.ID}}">{{.Tournament.Name}}</a>
+  - {{.Tournament.DateStart.Month}} {{.Tournament.DateStart.Day}}, {{.Tournament.DateStart.Year}}
+</div>
 {{end}}
 
 <h3>Recent Matches</h3>

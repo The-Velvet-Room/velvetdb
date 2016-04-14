@@ -152,6 +152,7 @@ func main() {
 
 	r.HandleFunc("/", homeHandler)
 	r.HandleFunc("/editplayer/{playerNick:[-a-zA-Z0-9]+}", isAdminMiddleware(editPlayerHandler))
+	r.HandleFunc("/players", playersHandler)
 	r.HandleFunc("/player/{playerNick:[-a-zA-Z0-9]+}", playerViewHandler)
 	r.HandleFunc("/addplayer", isAdminMiddleware(addPlayerHandler))
 	r.HandleFunc("/addgametype", isAdminMiddleware(addGameTypeHandler))

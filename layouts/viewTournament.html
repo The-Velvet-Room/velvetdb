@@ -23,7 +23,10 @@
   <h3>Results</h3>
   {{range .Results}}
     {{$p := index $.PlayerMap .Player}}
-    <div>{{.Place}} - Seeded {{.Seed}} - {{$p.Nickname}}</div>
+    <div>
+      {{.Place}} - Seeded {{.Seed}}
+      - <a href="/player/{{$p.URLPath}}">{{$p.Nickname}}</a>
+    </div>
   {{end}}
 
   <h3>Matches</h3>

@@ -186,6 +186,20 @@ func editPlayerHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "editPlayer", data)
 }
 
+func playersHandler(w http.ResponseWriter, r *http.Request) {
+	players := fetchPlayers()
+	_, loggedIn := isLoggedIn(r)
+
+	data := struct {
+		Players  []Player
+		LoggedIn bool
+	}{
+		players,
+		loggedIn,
+	}
+	renderTemplate(w, r, "players", data)
+}
+
 func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	playerNick := vars["playerNick"]

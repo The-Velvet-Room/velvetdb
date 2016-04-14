@@ -312,10 +312,10 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Add tournament results for all players we haven't added yet.
 		tr := &TournamentResult{
-			Tournament: rootTournamentID,
-			Player:     playerMap[id],
-			Place:      0,
-			Seed:       0,
+			TournamentID: rootTournamentID,
+			Player:       playerMap[id],
+			Place:        0,
+			Seed:         0,
 		}
 		// Only add the place and seed of the player if it's the final bracket.
 		if t.PoolOf == "" {
