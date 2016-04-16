@@ -6,6 +6,16 @@
 {{if .CanEdit}}
 <a href="/editplayer/{{.Player.URLPath}}">Edit Player</a>
 {{end}}
+
+<h3>Recent Results</h3>
+{{range .Results}}
+<div>
+  {{.Place}} - <a href="/tournament/{{.Tournament.ID}}">{{.Tournament.Name}}</a>
+  - {{.Tournament.DateStart.Month}} {{.Tournament.DateStart.Day}}, {{.Tournament.DateStart.Year}}
+</div>
+{{end}}
+
+<h3>Recent Matches</h3>
 {{range .Matches}}
 <div>
   {{$p1 := index $.PlayerMap .Player1}}

@@ -312,10 +312,10 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Add tournament results for all players we haven't added yet.
 		tr := &TournamentResult{
-			Tournament: rootTournamentID,
-			Player:     playerMap[id],
-			Place:      0,
-			Seed:       0,
+			TournamentID: rootTournamentID,
+			Player:       playerMap[id],
+			Place:        0,
+			Seed:         0,
 		}
 		// Only add the place and seed of the player if it's the final bracket.
 		if t.PoolOf == "" {
@@ -408,11 +408,13 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pools, _ := fetchTournamentPools(t.ID)
+	results, _ := fetchResultsForTournament(t.ID)
 
 	data := struct {
 		Tournament *Tournament
 		PoolOf     *Tournament
 		Pools      []*Tournament
+		Results    []*TournamentResult
 		Matches    []Match
 		PlayerMap  map[string]Player
 		IsLoggedIn bool
@@ -420,6 +422,7 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		t,
 		poolOf,
 		pools,
+		results,
 		matches,
 		playerMap,
 		logged,

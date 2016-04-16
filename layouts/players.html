@@ -1,0 +1,18 @@
+{{ define "title" }}Players{{ end }}
+{{ define "content" }}
+<h1>Players</h1>
+
+<div>
+    <ul>
+    {{len .Players}} players
+    {{range .Players}}
+      <li>
+        <a href="/player/{{.URLPath}}">{{.Nickname}}</a>
+        {{if $.LoggedIn}}
+        - <a href="/editplayer/{{.URLPath}}">[Edit]</a>
+        {{end}}
+      </li>
+    {{end}}
+    </ul>
+</div>
+{{ end }}
