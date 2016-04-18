@@ -30,6 +30,7 @@ or set environment variables. The `config.json` should look like this:
   "rethinkConnection": "",
   "challongeApiKey": "",
   "challongeDevUsername": "",
+  "mapquestApiKey": "",
   "cookieKey": ""
 }
 ```
