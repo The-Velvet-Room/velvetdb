@@ -5,22 +5,21 @@ import (
 )
 
 func faceoffHandler(w http.ResponseWriter, r *http.Request) {
-	p := fetchPlayers()
 	p1 := r.FormValue("p1")
 	p2 := r.FormValue("p2")
 	var matches *[]Match
-	var player1 Player
-	var player2 Player
+	var player1 *Player
+	var player2 *Player
 	player1sets, player2sets, player1matches, player2matches := 0, 0, 0, 0
 	if p1 != "" && p2 != "" {
-		for _, pl := range p {
-			if p1 == pl.URLPath {
-				player1 = pl
-			}
-			if p2 == pl.URLPath {
-				player2 = pl
-			}
+		var err1 error
+		var err2 error
+		player1, err1 = fetchPlayerByURLPath(p1)
+		player2, err2 = fetchPlayerByURLPath(p2)
+		if err1 != nil || err2 != nil {
+			http.Redirect(w, r, "/faceoff", http.StatusFound)
 		}
+
 		_, logged := isLoggedIn(r)
 		matches = fetchMatchesForPlayers(player1.ID, player2.ID, logged)
 		for _, g := range *matches {
@@ -44,7 +43,6 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data := struct {
-		Players      []Player
 		Matches      *[]Match
 		Player1      *Player
 		Player2      *Player
@@ -53,10 +51,9 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 		Player1Games int
 		Player2Games int
 	}{
-		p,
 		matches,
-		&player1,
-		&player2,
+		player1,
+		player2,
 		player1sets,
 		player2sets,
 		player1matches,

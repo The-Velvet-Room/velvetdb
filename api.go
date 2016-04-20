@@ -20,3 +20,13 @@ func handleAPIPlayers(w http.ResponseWriter, r *http.Request) {
 	p := fetchPlayers()
 	writeAPIResponse(w, p)
 }
+
+func handleAPIPlayersSearch(w http.ResponseWriter, r *http.Request) {
+	search := r.FormValue("query")
+	p, err := fetchPlayersSearch(search)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeAPIResponse(w, p)
+}

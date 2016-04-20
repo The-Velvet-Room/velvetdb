@@ -196,6 +196,7 @@ func main() {
 
 	// API
 	r.HandleFunc("/api/v1/players.json", handleAPIPlayers)
+	r.HandleFunc("/api/v1/players/search.json", handleAPIPlayersSearch)
 
 	fmt.Println("We're up and running!")
 

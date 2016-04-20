@@ -114,6 +114,22 @@ func fetchPlayerByURLPath(urlpath string) (*Player, error) {
 	return player, nil
 }
 
+func fetchPlayersSearch(nickname string) ([]*Player, error) {
+	c, err := getPlayerTable().
+		Filter(r.Row.Field("nickname").Match("(?i)" + nickname)).
+		OrderBy("nickname").Limit(10).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+	players := []*Player{}
+	err = c.All(&players)
+	if err != nil {
+		return nil, err
+	}
+	return players, nil
+}
+
 func fetchPlayers() []Player {
 	c, err := getPlayerTable().OrderBy("nickname").Run(dataStore.GetSession())
 	defer c.Close()
