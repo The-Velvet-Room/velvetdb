@@ -10,7 +10,7 @@
     {{end}}
     </ul>
   {{else}}
-    <select id="gametype" name="gametype">
+    <select id="gametype" name="gametype" class="form-control">
       <option value="">Select a Game</option>
       {{range .GameTypes}}
       <option value="{{ .URLPath }}">{{ .Name }}</option>

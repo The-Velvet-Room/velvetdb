@@ -194,6 +194,10 @@ func main() {
 	r.HandleFunc("/save/adduser", hasPermissionMiddleware(saveRegisterUserHandler, getPermissionLevels().CanModifyUsers))
 	r.HandleFunc("/save/changepassword", isAdminMiddleware(saveChangePasswordHandler))
 
+	// API
+	r.HandleFunc("/api/v1/players.json", handleAPIPlayers)
+	r.HandleFunc("/api/v1/players/search.json", handleAPIPlayersSearch)
+
 	fmt.Println("We're up and running!")
 
 	http.ListenAndServe(":3000", r)

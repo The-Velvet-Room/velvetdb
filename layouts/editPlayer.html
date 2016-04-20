@@ -2,27 +2,122 @@
 {{ define "content" }}
 <h1>Edit Player</h1>
 
-<form action="/save/editplayer/{{.Player.URLPath}}" method="POST">
-  <div>
-    <label for="nickname">Nickname</label>
-    <input type="text" name="nickname" id="nickname" value="{{.Player.Nickname}}">
+<form class="form-horizontal" action="/save/editplayer/{{.Player.URLPath}}" method="POST">
+  <div class="form-group">
+    <label for="nickname" class="col-sm-2 control-label">Nickname</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="Nickname" name="nickname" id="nickname" value="{{.Player.Nickname}}">
+    </div>
   </div>
-  <div>
-    <label for="urlpath">URL Path</label>
-    <input type="text" name="urlpath" id="urlpath" value="{{.Player.URLPath}}">
+  <div class="form-group">
+    <label for="urlpath" class="col-sm-2 control-label">URL Path</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="Nickname" name="urlpath" id="urlpath" value="{{.Player.URLPath}}">
+    </div>
   </div>
-  <div>
-    <label for="tag">Tag</label>
-    <input type="text" name="tag" id="tag" value="{{.Player.Tag}}">
+  <div class="form-group">
+    <label for="tag" class="col-sm-2 control-label">Tag</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="Tag" name="tag" id="tag" value="{{.Player.Tag}}">
+    </div>
   </div>
-  <div>
-    <label for="firstname">First Name</label>
-    <input type="text" name="firstname" id="firstname" value="{{.Player.FirstName}}">
-    <label for="lastname">Last Name</label>
-    <input type="text" name="lastname" id="lastname" value="{{.Player.LastName}}">
+  <div class="form-group">
+    <label for="image" class="col-sm-2 control-label">Image</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="Image" name="image" value="{{.Player.Image}}">
+    </div>
   </div>
-  <div>
-    <input type="submit" value="Save">
+  <div class="form-group">
+    <label for="aliases" class="col-sm-2 control-label">Aliases</label>
+    <div class="col-sm-10">
+      <div id="alias-list">
+        {{range .Player.Aliases}}
+        <div>
+        <input type="text" class="form-control" placeholder="Alias" name="aliases" value="{{.}}">
+        </div>
+        {{end}}
+      </div>
+      <div>
+        <button type="button" class="btn btn-default" id="add-alias">Add Alias</button>
+      </div>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="firstname" class="col-sm-2 control-label">First Name</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="First Name" name="firstname" id="firstname" value="{{.Player.FirstName}}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="lastname" class="col-sm-2 control-label">Last Name</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="Last Name" name="lastname" id="lastname" value="{{.Player.LastName}}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="twitter" class="col-sm-2 control-label">Twitter</label>
+    <div class="col-sm-10">
+      <div class="input-group">
+        <span class="input-group-addon">@</span>
+        <input type="text" class="form-control" placeholder="Twitter" name="twitter" value="{{.Player.Twitter}}">
+      </div>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="twitch" class="col-sm-2 control-label">Twitch</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="Twitch" name="twitch" id="twitch" value="{{.Player.Twitch}}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="city" class="col-sm-2 control-label">City</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="City" name="city" id="city" value="{{.Player.City}}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="state" class="col-sm-2 control-label">State</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" placeholder="State" name="state" id="state" value="{{.Player.State}}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="facts" class="col-sm-2 control-label">Facts</label>
+    <div class="col-sm-10">
+      <div id="fact-list">
+        {{range .Player.Facts}}
+        <div>
+        <input type="text" class="form-control" placeholder="Fact" name="facts" value="{{.}}">
+        </div>
+        {{end}}
+      </div>
+      <div>
+        <button type="button" class="btn btn-default" id="add-fact">Add Fact</button>
+      </div>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="characters" class="col-sm-2 control-label">Characters</label>
+    <div class="col-sm-10">
+      <div id="character-list">
+        {{range .Player.Characters}}
+        <div>
+        <input type="text" class="form-control" placeholder="Character" name="characters" value="{{.}}">
+        </div>
+        {{end}}
+      </div>
+      <div>
+        <button type="button" class="btn btn-default" id="add-character">Add Character</button>
+      </div>
+    </div>
+  </div>
+  <div class="form-group">
+    <div class="col-sm-offset-2 col-sm-10">
+      <button type="submit" class="btn btn-default">Save</button>
+    </div>
   </div>
 </form>
 {{ end }}
+{{ define "scripts" }}
+<script src="/assets/js/editplayer.js"></script>
+{{end}}

@@ -13,6 +13,7 @@ type Configuration struct {
 	RethinkConnection    string `json:"rethinkConnection"`
 	ChallongeApiKey      string `json:"challongeApiKey"`
 	ChallongeDevUsername string `json:"challongeDevUsername"`
+	MapquestApiKey       string `json:"mapquestApiKey"`
 	CookieKey            string `json:"cookieKey"`
 }
 

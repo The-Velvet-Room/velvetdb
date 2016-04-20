@@ -3,27 +3,23 @@
 <h1>Faceoff</h1>
 
 <form action="/faceoff" method="GET">
-  <label for="p1">Player 1</label>
-  <select id="p1" name="p1" class="form-control">
-    {{$p1 := .Player1.ID}}
-    {{$p2 := .Player2.ID}}
-    {{range .Players}}
-    <option value="{{ .URLPath }}"
-      {{ if eq $p1 .ID }}selected{{end}}
-    >{{ .Nickname }}</option>
-    {{end}}
-  </select>
-  <label for="p2">Player 2</label>
-  <select id="p2" name="p2" class="form-control">
-    {{range .Players}}
-    <option value="{{ .URLPath }}"
-      {{ if eq $p2 .ID }}selected{{end}}
-    >{{ .Nickname }}</option>
-    {{end}}
-  </select>
-  <div>
-    <button type="submit" class="btn btn-default">Submit</button>
+  <div class="form-group">
+    <label for="p1">Player 1</label>
+    <select id="p1" name="p1" class="form-control">
+      {{ with .Player1 }}
+      <option value="{{ .URLPath }}">{{ .Nickname }}</option>
+      {{ end }}
+    </select>
   </div>
+  <div class="form-group">
+    <label for="p2">Player 2</label>
+    <select id="p2" name="p2" class="form-control">
+      {{ with .Player2 }}
+      <option value="{{ .URLPath }}">{{ .Nickname }}</option>
+      {{ end }}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-default">Submit</button>
 </form>
 {{ with .Matches }}
   <div>
@@ -59,4 +55,12 @@
   {{ end }}
   </p>
 {{ end }}
+{{ end }}
+{{ define "scripts" }}
+  <script src="/assets/js/selectize.min.js"></script>
+  <script src="/assets/js/faceoff.js"></script>
+{{ end }}
+{{ define "styles" }}
+  <link href="/assets/selectize.css" rel="stylesheet">
+  <link href="/assets/selectize.bootstrap3.css" rel="stylesheet">
 {{ end }}

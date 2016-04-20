@@ -3,15 +3,22 @@
 <h1>Add Tournament</h1>
 
 <form action="/save/addtournament" method="POST">
-  <input id="name" name="name" placeholder="Name" />
-  <select id="gametype" name="gametype">
-    {{range .GameTypes}}
-    <option value="{{ .ID }}">{{ .Name }}</option>
-    {{end}}
-  </select>
-  <input id="url" name="url" placeholder="Challonge Url" />
-  <div>
-    <input type="submit" value="Save">
+  <div class="form-group">
+    <label form="name">Name</label>
+    <input id="name" class="form-control" name="name" placeholder="Name" />
   </div>
+  <div class="form-group">
+    <label for="gametype">Game Type</label>
+    <select id="gametype" name="gametype" class="form-control">
+      {{range .GameTypes}}
+      <option value="{{ .ID }}">{{ .Name }}</option>
+      {{end}}
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="url">Challonge URL</label>
+    <input id="url" class="form-control" name="url" placeholder="Challonge Url" />
+  </div>
+  <button type="submit" class="btn btn-default">Save</button>
 </form>
 {{ end }}

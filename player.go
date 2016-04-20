@@ -7,22 +7,27 @@ import (
 	"strings"
 
 	r "github.com/dancannon/gorethink"
+	"github.com/dancannon/gorethink/types"
 	"github.com/gorilla/mux"
+	"github.com/jasonwinn/geocoder"
 )
 
 type Player struct {
-	ID         string   `gorethink:"id,omitempty"`
-	Nickname   string   `gorethink:"nickname"`
-	Tag        string   `gorethink:"tag"`
-	Aliases    []string `gorethink:"aliases"`
-	Image      string   `gorethink:"image"`
-	URLPath    string   `gorethink:"urlpath"`
-	FirstName  string   `gorethink:"first_name"`
-	LastName   string   `gorethink:"last_name"`
-	Facts      []string `gorethink:"facts"`
-	Characters []string `gorethink:"characters"`
-	Twitter    string   `gorethink:"twitter"`
-	Twitch     string   `gorethink:"twitch"`
+	ID         string      `gorethink:"id,omitempty"`
+	Nickname   string      `gorethink:"nickname"`
+	Tag        string      `gorethink:"tag"`
+	Aliases    []string    `gorethink:"aliases"`
+	Image      string      `gorethink:"image"`
+	URLPath    string      `gorethink:"urlpath"`
+	FirstName  string      `gorethink:"first_name"`
+	LastName   string      `gorethink:"last_name"`
+	Facts      []string    `gorethink:"facts"`
+	Characters []string    `gorethink:"characters"`
+	Twitter    string      `gorethink:"twitter"`
+	Twitch     string      `gorethink:"twitch"`
+	City       string      `gorethink:"city"`
+	State      string      `gorethink:"state"`
+	Location   types.Point `gorethink:"location,omitempty"`
 }
 
 var alphanumeric = regexp.MustCompile("[^A-Za-z0-9]+")
@@ -109,6 +114,22 @@ func fetchPlayerByURLPath(urlpath string) (*Player, error) {
 	return player, nil
 }
 
+func fetchPlayersSearch(nickname string) ([]*Player, error) {
+	c, err := getPlayerTable().
+		Filter(r.Row.Field("nickname").Match("(?i)" + nickname)).
+		OrderBy("nickname").Limit(10).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+	players := []*Player{}
+	err = c.All(&players)
+	if err != nil {
+		return nil, err
+	}
+	return players, nil
+}
+
 func fetchPlayers() []Player {
 	c, err := getPlayerTable().OrderBy("nickname").Run(dataStore.GetSession())
 	defer c.Close()
@@ -143,6 +164,7 @@ func saveEditPlayerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.ParseForm()
 	urlpath := r.FormValue("urlpath")
 	if urlpath != player.URLPath {
 		player, _ := fetchPlayerByURLPath(urlpath)
@@ -152,15 +174,59 @@ func saveEditPlayerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = getPlayerTable().Filter(map[string]interface{}{
-		"urlpath": playerNick,
-	}).Update(map[string]interface{}{
+	city := r.FormValue("city")
+	state := r.FormValue("state")
+
+	point := player.Location
+	// if city or state are different and they're not empty, run the geocoder
+	if (city != player.City || state != player.State) && city != "" && state != "" {
+		geocoder.SetAPIKey(siteConfiguration.MapquestApiKey)
+		lat, lng, err := geocoder.Geocode(city + "," + state)
+		if err == nil {
+			point.Lat = lat
+			point.Lon = lng
+		}
+	}
+
+	facts := []string{}
+	for _, v := range r.Form["facts"] {
+		if v != "" {
+			facts = append(facts, v)
+		}
+	}
+	characters := []string{}
+	for _, v := range r.Form["characters"] {
+		if v != "" {
+			characters = append(characters, v)
+		}
+	}
+	aliases := []string{}
+	for _, v := range r.Form["aliases"] {
+		if v != "" {
+			aliases = append(aliases, v)
+		}
+	}
+
+	update := map[string]interface{}{
 		"nickname":   r.FormValue("nickname"),
 		"urlpath":    urlpath,
 		"tag":        r.FormValue("tag"),
+		"image":      r.FormValue("image"),
 		"first_name": r.FormValue("firstname"),
 		"last_name":  r.FormValue("lastname"),
-	}).RunWrite(dataStore.GetSession())
+		"city":       city,
+		"state":      state,
+		"twitter":    r.FormValue("twitter"),
+		"twitch":     r.FormValue("twitch"),
+		"facts":      facts,
+		"aliases":    aliases,
+		"characters": characters,
+		"location":   point,
+	}
+
+	_, err = getPlayerTable().Filter(map[string]interface{}{
+		"urlpath": playerNick,
+	}).Update(update).RunWrite(dataStore.GetSession())
 	if err != nil {
 		fmt.Println(err)
 	}
