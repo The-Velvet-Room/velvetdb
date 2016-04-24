@@ -179,7 +179,9 @@ func saveEditPlayerHandler(w http.ResponseWriter, r *http.Request) {
 
 	point := player.Location
 	// if city or state are different and they're not empty, run the geocoder
-	if (city != player.City || state != player.State) && city != "" && state != "" {
+	if city == "" && state == "" {
+		point = types.Point{}
+	} else if city != player.City || state != player.State {
 		geocoder.SetAPIKey(siteConfiguration.MapquestApiKey)
 		lat, lng, err := geocoder.Geocode(city + "," + state)
 		if err == nil {

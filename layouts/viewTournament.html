@@ -10,7 +10,8 @@
   {{end}}
 
   {{if $.IsLoggedIn}}
-  <a href="/addpool/{{$.Tournament.ID}}">[ Add Pool ]</a>
+  <div><a href="/edit/tournament/{{$.Tournament.ID}}">[ Edit Tournament ]</a></div>
+  <div><a href="/addpool/{{$.Tournament.ID}}">[ Add Pool ]</a></div>
   {{end}}
 
   {{with .Pools}}
