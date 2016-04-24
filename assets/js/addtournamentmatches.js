@@ -20,4 +20,13 @@ $(function() {
       });
     }
   });
+
+  // prevent enter from submitting form, because enter selects
+  // elements with selectize
+  $('form').on('keypress keydown keyup', function(e) {
+    if (e.which == 13) {
+      e.preventDefault();
+      return false;
+    }
+  });
 });
