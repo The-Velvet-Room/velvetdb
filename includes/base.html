@@ -24,11 +24,40 @@
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li><a href="/players">Players</a></li>
-            <li><a href="/faceoff">Faceoff</a></li>
-            <li><a href="/tournaments">Tournaments</a></li>
             {{ with .User }}
-            <li><a href="/addtournament">Add Tournament</a></li>
+              <li class="dropdown">
+                <a id="playerDrop" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" role="button">
+                  Players
+                  <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="playerDrop">
+                  <li>
+                    <a href="/players">All Players</a>
+                    <a href="/players/merge">Merge Players</a>
+                  </li>
+                </ul>
+              </li>
+            {{ else }}
+              <li><a href="/players">Players</a></li>
+            {{ end }}
+            <li><a href="/faceoff">Faceoff</a></li>
+            {{ with .User }}
+              <li class="dropdown">
+                <a id="tournamentDrop" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" role="button">
+                  Tournaments
+                  <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="tournamentDrop">
+                  <li>
+                    <a href="/tournaments">All Tournaments</a>
+                    <a href="/addtournament">Add Tournament</a>
+                  </li>
+                </ul>
+              </li>
+            {{ else }}
+              <li><a href="/tournaments">Tournaments</a></li>
+            {{ end }}
+            {{ with .User }}
             {{if .HasPermission $.PermissionLevels.CanModifyUsers}}
             <li><a href="/users">Users</a></li>
             {{end}}

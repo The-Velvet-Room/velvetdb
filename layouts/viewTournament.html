@@ -21,6 +21,8 @@
     {{end}}
   {{end}}
 
+  <div>Bracket: <a href="{{.Tournament.BracketURL}}">{{.Tournament.BracketURL}}</a></div>
+
   <h3>Results</h3>
   {{range .Results}}
     {{$p := index $.PlayerMap .Player}}
