@@ -8,23 +8,27 @@ import (
 	"strings"
 	"time"
 
-	r "gopkg.in/dancannon/gorethink.v2"
-
 	"github.com/dguenther/go-challonge"
 	"github.com/gorilla/mux"
+	"github.com/jasonwinn/geocoder"
+	r "gopkg.in/dancannon/gorethink.v2"
+	"gopkg.in/dancannon/gorethink.v2/types"
 )
 
 type Tournament struct {
-	ID          string    `gorethink:"id,omitempty"`
-	GameType    string    `gorethink:"gametype"`
-	Name        string    `gorethink:"name"`
-	BracketURL  string    `gorethink:"bracket_url"`
-	VODUrl      string    `gorethink:"vod_url"`
-	PoolOf      string    `gorethink:"pool_of"`
-	DateStart   time.Time `gorethink:"date_start"`
-	DateEnd     time.Time `gorethink:"date_end"`
-	PlayerCount int       `gorethink:"player_count"`
-	Editing     bool      `gorethink:"editing"`
+	ID          string      `gorethink:"id,omitempty"`
+	GameType    string      `gorethink:"gametype"`
+	Name        string      `gorethink:"name"`
+	BracketURL  string      `gorethink:"bracket_url"`
+	VODUrl      string      `gorethink:"vod_url"`
+	PoolOf      string      `gorethink:"pool_of"`
+	DateStart   time.Time   `gorethink:"date_start"`
+	DateEnd     time.Time   `gorethink:"date_end"`
+	City        string      `gorethink:"city"`
+	State       string      `gorethink:"state"`
+	Location    types.Point `gorethink:"location,omitempty"`
+	PlayerCount int         `gorethink:"player_count"`
+	Editing     bool        `gorethink:"editing"`
 }
 
 const initialLastID string = "0"
@@ -168,6 +172,9 @@ func savePoolHandler(w http.ResponseWriter, r *http.Request) {
 		BracketURL:  url,
 		PoolOf:      poolOf,
 		GameType:    t.GameType,
+		City:        t.City,
+		State:       t.State,
+		Location:    t.Location,
 		DateStart:   *ct.StartedAt,
 		DateEnd:     *ct.UpdatedAt,
 		PlayerCount: ct.ParticipantsCount,
@@ -211,6 +218,18 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	city := r.FormValue("city")
+	state := r.FormValue("state")
+	point := types.Point{}
+	if city != "" && state != "" {
+		geocoder.SetAPIKey(siteConfiguration.MapquestApiKey)
+		lat, lng, err := geocoder.Geocode(city + "," + state)
+		if err == nil {
+			point.Lat = lat
+			point.Lon = lng
+		}
+	}
+
 	t := fetchChallongeTournament(url)
 
 	id := addTournament(Tournament{
@@ -220,6 +239,9 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		DateStart:   *t.StartedAt,
 		DateEnd:     *t.UpdatedAt,
 		PlayerCount: t.ParticipantsCount,
+		City:        city,
+		State:       state,
+		Location:    point,
 		Editing:     true,
 	})
 
