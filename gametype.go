@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	r "github.com/dancannon/gorethink"
+	r "gopkg.in/dancannon/gorethink.v2"
 )
 
 type GameType struct {

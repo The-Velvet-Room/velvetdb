@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	r "github.com/dancannon/gorethink"
+	r "gopkg.in/dancannon/gorethink.v2"
 	"github.com/gorilla/mux"
 	"github.com/oxtoacart/bpool"
 )

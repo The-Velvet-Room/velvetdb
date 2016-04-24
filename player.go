@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	r "github.com/dancannon/gorethink"
-	"github.com/dancannon/gorethink/types"
+	r "gopkg.in/dancannon/gorethink.v2"
+	"gopkg.in/dancannon/gorethink.v2/types"
 	"github.com/gorilla/mux"
 	"github.com/jasonwinn/geocoder"
 )

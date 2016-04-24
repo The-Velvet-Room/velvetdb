@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	r "github.com/dancannon/gorethink"
+	r "gopkg.in/dancannon/gorethink.v2"
 	"github.com/gorilla/mux"
 )
 

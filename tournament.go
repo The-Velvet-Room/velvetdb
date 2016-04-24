@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	r "github.com/dancannon/gorethink"
+	r "gopkg.in/dancannon/gorethink.v2"
 
 	"github.com/dguenther/go-challonge"
 	"github.com/gorilla/mux"
