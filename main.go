@@ -203,8 +203,10 @@ func main() {
 	r.HandleFunc("/save/changepassword", isAdminMiddleware(saveChangePasswordHandler))
 
 	// API
-	r.HandleFunc("/api/v1/players.json", handleAPIPlayers)
-	r.HandleFunc("/api/v1/players/search.json", handleAPIPlayersSearch)
+	api := r.PathPrefix("/api/v1").Subrouter()
+	api.Methods("OPTIONS").HandlerFunc(handleAPIPreflight)
+	api.HandleFunc("/players.json", handleAPIPlayers)
+	api.HandleFunc("/players/search.json", handleAPIPlayersSearch)
 
 	fmt.Println("We're up and running!")
 
