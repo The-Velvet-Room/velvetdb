@@ -125,6 +125,19 @@ func fetchTournamentPools(ID string) ([]*Tournament, error) {
 	return t, nil
 }
 
+func deleteTournament(ID string) {
+	// Delete the tournament matches
+	getMatchTable().Filter(map[string]interface{}{
+		"tournament": ID,
+	}).Delete().RunWrite(dataStore.GetSession())
+	// Delete the tournament results
+	getTournamentResultTable().Filter(map[string]interface{}{
+		"tournament": ID,
+	}).Delete().RunWrite(dataStore.GetSession())
+	// Delete the tournament
+	getTournamentTable().Get(ID).Delete().RunWrite(dataStore.GetSession())
+}
+
 func addPoolHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tournamentID := vars["tournament"]
@@ -323,17 +336,14 @@ func addTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ct := fetchChallongeTournament(t.BracketURL)
-	players := fetchPlayers()
 	data := struct {
 		Tournament   *Tournament
 		Participants []*challonge.Participant
 		Complete     bool
-		Players      []Player
 	}{
 		t,
 		ct.Participants,
 		ct.State == "complete",
-		players,
 	}
 	renderTemplate(w, r, "addTournamentMatch", data)
 }
@@ -422,9 +432,17 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 		if m.State != "complete" {
 			continue
 		}
-		scoreSplit := strings.SplitN(m.Scores, "-", 2)
-		m.PlayerOneScore, _ = strconv.Atoi(scoreSplit[0])
-		m.PlayerTwoScore, _ = strconv.Atoi(scoreSplit[1])
+		p1score := 0
+		p2score := 0
+		// sum up the set results, since we're not tracking sets yet
+		for _, set := range strings.Split(m.Scores, ",") {
+			scoreSplit := strings.SplitN(set, "-", 2)
+			p1setscore, _ := strconv.Atoi(scoreSplit[0])
+			p2setscore, _ := strconv.Atoi(scoreSplit[1])
+			p1score += p1setscore
+			p2score += p2setscore
+		}
+
 		p1 := strconv.Itoa(m.PlayerOneId)
 		p2 := strconv.Itoa(m.PlayerTwoId)
 		var p1prereq *string
@@ -447,8 +465,8 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 			Player2:                    playerMap[p2],
 			Player1PrevTournamentMatch: p1prereq,
 			Player2PrevTournamentMatch: p2prereq,
-			Player1score:               m.PlayerOneScore,
-			Player2score:               m.PlayerTwoScore,
+			Player1score:               p1score,
+			Player2score:               p2score,
 			Round:                      m.Round,
 		})
 	}
@@ -458,6 +476,38 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	updateTournamentEditing(t.ID, false)
 	http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
+}
+
+func deleteTournamentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	data := struct {
+		Tournament *Tournament
+	}{
+		t,
+	}
+	renderTemplate(w, r, "deleteTournament", data)
+}
+
+func saveDeleteTournamentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+
+	_, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	deleteTournament(tournamentID)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {

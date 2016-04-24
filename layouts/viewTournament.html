@@ -11,6 +11,7 @@
 
   {{if $.IsLoggedIn}}
   <div><a href="/edit/tournament/{{$.Tournament.ID}}">[ Edit Tournament ]</a></div>
+  <div><a href="/tournament/delete/{{$.Tournament.ID}}">[ Delete Tournament ]</a></div>
   <div><a href="/addpool/{{$.Tournament.ID}}">[ Add Pool ]</a></div>
   {{end}}
 

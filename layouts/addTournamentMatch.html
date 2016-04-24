@@ -20,25 +20,22 @@
     </thead>
     <tbody>
       {{range .Participants}}
-      <tr>
+      <tr class="participant-row">
         <td>{{.Name}}</td>
         <td class="col-md-4">
           <div class="input-group">
             <span class="input-group-addon">
-              <input type="radio" name="p_{{.Id}}" value="new">
+              <input type="radio" name="p_{{.Id}}" value="new" checked>
             </span>
             <input type="text" class="form-control" name="newname_p_{{.Id}}" value="{{.Name}}">
           </div>
         </td>
         <td class="col-md-4">
-          <div class="input-group">
-            <span class="input-group-addon">
-              <input type="radio" name="p_{{.Id}}" value="select" checked>
-            </span>
+          <div class="col-md-1">
+            <input type="radio" name="p_{{.Id}}" value="select">
+          </div>
+          <div class="col-md-8">
             <select class="form-control" name="select_p_{{.Id}}">
-              {{range $.Players}}
-              <option value="{{ .ID }}">{{ .Nickname }}</option>
-              {{end}}
             </select>
           </div>
         </td>
@@ -51,4 +48,12 @@
     <input class="btn btn-default" type="submit" value="Save">
   </div>
 </form>
+{{ end }}
+{{ define "scripts" }}
+  <script src="/assets/js/selectize.min.js"></script>
+  <script src="/assets/js/addtournamentmatches.js"></script>
+{{ end }}
+{{ define "styles" }}
+  <link href="/assets/selectize.css" rel="stylesheet">
+  <link href="/assets/selectize.bootstrap3.css" rel="stylesheet">
 {{ end }}

@@ -1,0 +1,14 @@
+{{ define "title" }}Delete {{.Tournament.Name}}{{ end }}
+
+{{ define "content" }}
+  <h1>Delete {{.Tournament.Name}}</h1>
+
+  Are you sure you want to delete {{.Tournament.Name}}?
+
+  <form action="/save/tournament/delete/{{.Tournament.ID}}" method="POST">
+    <button>Delete</button>
+  </form>
+  <form action="/tournament/{{.Tournament.ID}}" method="GET">
+    <button>Cancel</button>
+  </form>
+{{ end }}
