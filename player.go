@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"strings"
 
-	r "github.com/dancannon/gorethink"
-	"github.com/dancannon/gorethink/types"
 	"github.com/gorilla/mux"
 	"github.com/jasonwinn/geocoder"
+	r "gopkg.in/dancannon/gorethink.v2"
+	"gopkg.in/dancannon/gorethink.v2/types"
 )
 
 type Player struct {

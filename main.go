@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"path/filepath"
 
-	r "github.com/dancannon/gorethink"
 	"github.com/gorilla/mux"
 	"github.com/oxtoacart/bpool"
+	r "gopkg.in/dancannon/gorethink.v2"
 )
 
 type Page struct {
