@@ -196,6 +196,28 @@ func addTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "addTournament", data)
 }
 
+func editTournamentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	gameTypes := fetchGameTypes()
+
+	data := struct {
+		Tournament *Tournament
+		GameTypes  []GameType
+	}{
+		t,
+		gameTypes,
+	}
+
+	renderTemplate(w, r, "editTournament", data)
+}
+
 func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	url := r.FormValue("url")
 	name := r.FormValue("name")
@@ -246,6 +268,48 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.Redirect(w, r, "/tournament/"+id, http.StatusFound)
+}
+
+func saveEditTournamentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tournamentID := vars["tournament"]
+
+	t, err := fetchTournament(tournamentID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	city := r.FormValue("city")
+	state := r.FormValue("state")
+
+	point := t.Location
+	// if city or state are different and they're not empty, run the geocoder
+	if city == "" && state == "" {
+		point = types.Point{}
+	} else if city != t.City || state != t.State {
+		geocoder.SetAPIKey(siteConfiguration.MapquestApiKey)
+		lat, lng, err := geocoder.Geocode(city + "," + state)
+		if err == nil {
+			point.Lat = lat
+			point.Lon = lng
+		}
+	}
+
+	wr, err := getTournamentTable().Get(tournamentID).Update(map[string]interface{}{
+		"name":     r.FormValue("name"),
+		"gametype": r.FormValue("gametype"),
+		"city":     city,
+		"state":    state,
+		"location": point,
+	}).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	if wr.Errors > 0 {
+		fmt.Println(wr.FirstError)
+	}
+	http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
 }
 
 func addTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,28 @@
+{{ define "title" }}Edit Tournament{{ end }}
+{{ define "content" }}
+<h1>Edit Tournament</h1>
+
+<form action="/save/tournament/{{.Tournament.ID}}" method="POST">
+  <div class="form-group">
+    <label form="name">Name</label>
+    <input id="name" class="form-control" name="name" placeholder="Name" value="{{.Tournament.Name}}" />
+  </div>
+  <div class="form-group">
+    <label for="gametype">Game Type</label>
+    <select id="gametype" name="gametype" class="form-control">
+      {{range .GameTypes}}
+      <option value="{{ .ID }}" {{if eq .ID $.Tournament.GameType }}selected{{end}}>{{ .Name }}</option>
+      {{end}}
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="city">City</label>
+    <input id="city" class="form-control" name="city" placeholder="City" value="{{.Tournament.City}}" />
+  </div>
+  <div class="form-group">
+    <label for="state">State</label>
+    <input id="state" class="form-control" name="state" placeholder="State" value="{{.Tournament.State}}" />
+  </div>
+  <button type="submit" class="btn btn-default">Save</button>
+</form>
+{{ end }}
