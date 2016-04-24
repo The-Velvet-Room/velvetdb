@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/boj/rethinkstore"
-	r "gopkg.in/dancannon/gorethink.v2"
 	"golang.org/x/crypto/bcrypt"
+	r "gopkg.in/dancannon/gorethink.v2"
 )
 
 type User struct {

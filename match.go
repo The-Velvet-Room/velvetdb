@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	r "gopkg.in/dancannon/gorethink.v2"
 	"github.com/gorilla/mux"
+	r "gopkg.in/dancannon/gorethink.v2"
 )
 
 type Match struct {
