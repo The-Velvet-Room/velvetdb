@@ -305,3 +305,41 @@ func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 
 	renderTemplate(w, r, "player", data)
 }
+
+func mergePlayersHandler(w http.ResponseWriter, r *http.Request) {
+	renderTemplate(w, r, "mergePlayers", nil)
+}
+
+func saveMergePlayersHandler(w http.ResponseWriter, r *http.Request) {
+	keepPlayerID := r.FormValue("playerkeep")
+	mergePlayerID := r.FormValue("playermerge")
+	if keepPlayerID == mergePlayerID || keepPlayerID == "" || mergePlayerID == "" {
+		http.Redirect(w, r, "/players", http.StatusFound)
+		return
+	}
+
+	// merge matches into the player to keep
+	getMatchTable().Filter(map[string]interface{}{
+		"player1": mergePlayerID,
+	}).Update(map[string]interface{}{
+		"player1": keepPlayerID,
+	}).RunWrite(dataStore.GetSession())
+
+	getMatchTable().Filter(map[string]interface{}{
+		"player2": mergePlayerID,
+	}).Update(map[string]interface{}{
+		"player2": keepPlayerID,
+	}).RunWrite(dataStore.GetSession())
+
+	// merge tournament results into the player to keep
+	getTournamentResultTable().Filter(map[string]interface{}{
+		"player": mergePlayerID,
+	}).Update(map[string]interface{}{
+		"player": keepPlayerID,
+	}).RunWrite(dataStore.GetSession())
+
+	// delete the player
+	getPlayerTable().Get(mergePlayerID).Delete().RunWrite(dataStore.GetSession())
+
+	http.Redirect(w, r, "/players", http.StatusFound)
+}

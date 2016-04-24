@@ -1,0 +1,28 @@
+{{ define "title" }}Merge Players{{ end }}
+
+{{ define "content" }}
+  <h1>Merge Players</h1>
+
+  <form action="/save/merge/players" method="POST">
+    <div class="form-group">
+      <label for="playerkeep">Player to keep</label>
+      <select id="playerkeep" name="playerkeep" class="form-control">
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="playermerge">Player to merge</label>
+      <select id="playermerge" name="playermerge" class="form-control">
+      </select>
+    </div>
+    <button class="btn btn-default">Merge Players</button>
+  </form>
+
+{{ end }}
+{{ define "scripts" }}
+  <script src="/assets/js/selectize.min.js"></script>
+  <script src="/assets/js/mergeplayers.js"></script>
+{{ end }}
+{{ define "styles" }}
+  <link href="/assets/selectize.css" rel="stylesheet">
+  <link href="/assets/selectize.bootstrap3.css" rel="stylesheet">
+{{ end }}
