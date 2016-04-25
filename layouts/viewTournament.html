@@ -30,6 +30,9 @@
     <div>
       {{.Place}} - Seeded {{.Seed}}
       - <a href="/player/{{$p.URLPath}}">{{$p.Nickname}}</a>
+      {{if $.IsLoggedIn}}
+      <a href="/tournamentresult/edit/{{.ID}}">[Edit]</a>
+      {{end}}
     </div>
   {{end}}
 
