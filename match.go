@@ -72,7 +72,8 @@ func fetchMatchesForPlayers(p1 string, p2 string, includeHidden bool) *[]Match {
 	if !includeHidden {
 		r.And(filter, r.Row.Field("hidden").Eq(false))
 	}
-	c, err := getMatchTable().Filter(filter).Run(dataStore.GetSession())
+	c, err := getMatchTable().Filter(filter).
+		OrderBy(r.Desc("date")).Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
