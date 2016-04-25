@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
 	"sort"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	r "gopkg.in/dancannon/gorethink.v2"
 )
 
@@ -23,6 +27,21 @@ func (a ByPlace) Less(i, j int) bool { return a[i].Place < a[j].Place }
 
 func getTournamentResultTable() r.Term {
 	return r.Table("tournamentresults")
+}
+
+func fetchTournamentResult(resultID string) (*TournamentResult, error) {
+	c, err := getTournamentResultTable().Get(resultID).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var result *TournamentResult
+	err = c.One(&result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func fetchResultsForTournament(tournamentID string) ([]*TournamentResult, error) {
@@ -69,4 +88,53 @@ func fetchResultsForPlayer(playerID string) ([]*TournamentResult, error) {
 	}
 
 	return results, nil
+}
+
+func editTournamentResultHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	resultID := vars["result"]
+	result, err := fetchTournamentResult(resultID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	tournament, _ := fetchTournament(result.TournamentID)
+	player, _ := fetchPlayer(result.Player)
+
+	data := struct {
+		TournamentResult *TournamentResult
+		Tournament       *Tournament
+		Player           *Player
+	}{
+		result,
+		tournament,
+		player,
+	}
+	renderTemplate(w, r, "editTournamentResult", data)
+}
+
+func saveEditTournamentResultHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	resultID := vars["result"]
+	result, err := fetchTournamentResult(resultID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	seed, _ := strconv.Atoi(r.FormValue("seed"))
+	place, _ := strconv.Atoi(r.FormValue("place"))
+
+	wr, err := getTournamentResultTable().Get(resultID).Update(map[string]interface{}{
+		"seed":      seed,
+		"placement": place,
+	}).RunWrite(dataStore.GetSession())
+	if err != nil {
+		fmt.Println(err)
+	}
+	if wr.Errors > 0 {
+		fmt.Println(wr.FirstError)
+	}
+	http.Redirect(w, r, "/tournament/"+result.TournamentID, http.StatusFound)
 }

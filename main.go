@@ -177,6 +177,10 @@ func main() {
 	r.HandleFunc("/tournament/delete/{tournament:[-a-zA-Z0-9]+}", isAdminMiddleware(deleteTournamentHandler))
 	r.HandleFunc("/save/tournament/delete/{tournament:[-a-zA-Z0-9]+}", isAdminMiddleware(saveDeleteTournamentHandler))
 
+	// Tournament results
+	r.HandleFunc("/tournamentresult/edit/{result:[-a-zA-Z0-9]+}", isAdminMiddleware(editTournamentResultHandler))
+	r.HandleFunc("/save/tournamentresult/edit/{result:[-a-zA-Z0-9]+}", isAdminMiddleware(saveEditTournamentResultHandler))
+
 	// Merge players
 	r.HandleFunc("/players/merge", isAdminMiddleware(mergePlayersHandler))
 	r.HandleFunc("/save/merge/players", isAdminMiddleware(saveMergePlayersHandler))
