@@ -434,13 +434,21 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		p1score := 0
 		p2score := 0
-		// sum up the set results, since we're not tracking sets yet
-		for _, set := range strings.Split(m.Scores, ",") {
-			scoreSplit := strings.SplitN(set, "-", 2)
-			p1setscore, _ := strconv.Atoi(scoreSplit[0])
-			p2setscore, _ := strconv.Atoi(scoreSplit[1])
-			p1score += p1setscore
-			p2score += p2setscore
+		if m.Scores == "" {
+			if m.PlayerOneId == m.WinnerId {
+				p1score = 1
+			} else {
+				p2score = 1
+			}
+		} else {
+			// sum up the set results, since we're not tracking sets yet
+			for _, set := range strings.Split(m.Scores, ",") {
+				scoreSplit := strings.SplitN(set, "-", 2)
+				p1setscore, _ := strconv.Atoi(scoreSplit[0])
+				p2setscore, _ := strconv.Atoi(scoreSplit[1])
+				p1score += p1setscore
+				p2score += p2setscore
+			}
 		}
 
 		p1 := strconv.Itoa(m.PlayerOneId)
