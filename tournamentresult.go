@@ -67,7 +67,7 @@ func fetchResultsForPlayer(playerID string) ([]*TournamentResult, error) {
 	c, err := getTournamentResultTable().Filter(map[string]interface{}{
 		"player": playerID,
 	}).EqJoin("tournament", getTournamentTable()).
-		OrderBy(r.Desc("right.date_start")).Run(dataStore.GetSession())
+		OrderBy(r.Desc(r.Row.Field("right").Field("date_start"))).Run(dataStore.GetSession())
 	defer c.Close()
 	if err != nil {
 		return nil, err
