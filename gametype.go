@@ -32,6 +32,20 @@ func fetchGameTypes() []GameType {
 	return gameTypes
 }
 
+func fetchGameType(ID string) (*GameType, error) {
+	c, err := getGameTypeTable().Get(ID).Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+	var gt *GameType
+	err = c.One(&gt)
+	if err != nil {
+		return nil, err
+	}
+	return gt, nil
+}
+
 func fetchGameTypeByURLPath(p string) (*GameType, error) {
 	c, err := getGameTypeTable().Filter(map[string]interface{}{
 		"urlpath": p,
