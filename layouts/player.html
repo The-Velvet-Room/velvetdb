@@ -16,47 +16,53 @@
 {{with .Results}}
 <h3>Recent Results</h3>
 {{range .}}
-<div>
-  {{.Place}} - <a href="/tournament/{{.Tournament.ID}}">{{.Tournament.Name}}</a>
-  - {{.Tournament.DateStart.Month}} {{.Tournament.DateStart.Day}}, {{.Tournament.DateStart.Year}}
-</div>
+<strong>{{.GameType.Name}}</strong>
+  {{range .Results}}
+  <div>
+    {{.Place}} - <a href="/tournament/{{.Tournament.ID}}">{{.Tournament.Name}}</a>
+    - {{.Tournament.DateStart.Month}} {{.Tournament.DateStart.Day}}, {{.Tournament.DateStart.Year}}
+  </div>
+  {{end}}
 {{end}}
 {{end}}
 
 {{with .Matches}}
 <h3>Recent Matches</h3>
 {{range .}}
-<div>
-  {{$p1 := index $.PlayerMap .Player1}}
-  {{$p2 := index $.PlayerMap .Player2}}
-  {{if eq $p1.ID $.Player.ID}}
-    {{if gt .Player1score .Player2score}}
-      W
+<strong>{{.GameType.Name}}</strong>
+  {{range .Matches}}
+  <div>
+    {{$p1 := index $.PlayerMap .Player1}}
+    {{$p2 := index $.PlayerMap .Player2}}
+    {{if eq $p1.ID $.Player.ID}}
+      {{if gt .Player1score .Player2score}}
+        W
+      {{else}}
+        L
+      {{end}}
+      vs. <span>
+        <a href="/player/{{$p2.URLPath}}">{{$p2.Nickname}}</a>
+          ({{.Player1score}}-{{.Player2score}})
+        </span>
     {{else}}
-      L
+      {{if gt .Player2score .Player1score}}
+        W
+      {{else}}
+        L
+      {{end}}
+      vs. <span>
+        <a href="/player/{{$p1.URLPath}}">{{$p1.Nickname}}</a>
+        ({{.Player2score}}-{{.Player1score}})
+        </span>
     {{end}}
-    vs. <span>
-      <a href="/player/{{$p2.URLPath}}">{{$p2.Nickname}}</a>
-        ({{.Player1score}}-{{.Player2score}})
-      </span>
-  {{else}}
-    {{if gt .Player2score .Player1score}}
-      W
-    {{else}}
-      L
+    {{if .Hidden}}
+    (Hidden)
     {{end}}
-    vs. <span>
-      <a href="/player/{{$p1.URLPath}}">{{$p1.Nickname}}</a>
-      ({{.Player2score}}-{{.Player1score}})
-      </span>
+    {{if $.CanEdit}}
+    <a href="/edit/match/{{.ID}}">[Edit]</a>
+    {{end}}
+  </div>
   {{end}}
-  {{if .Hidden}}
-  (Hidden)
-  {{end}}
-  {{if $.CanEdit}}
-  <a href="/edit/match/{{.ID}}">[Edit]</a>
-  {{end}}
-</div>
 {{end}}
 {{end}}
 {{ end }}

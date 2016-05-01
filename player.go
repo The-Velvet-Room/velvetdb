@@ -286,19 +286,58 @@ func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, canEdit := isLoggedIn(r)
 
+	type GameTypeMatches struct {
+		GameType *GameType
+		Matches  []Match
+	}
+
 	matches := fetchMatchesForPlayer(player.ID, canEdit)
+
+	gameIndex := map[string]int{}
+	gameMatches := []GameTypeMatches{}
+	for _, m := range matches {
+		if _, ok := gameIndex[m.GameType]; !ok {
+			gt, _ := fetchGameType(m.GameType)
+			gameMatches = append(gameMatches, GameTypeMatches{
+				GameType: gt,
+				Matches:  []Match{},
+			})
+			gameIndex[m.GameType] = len(gameMatches) - 1
+		}
+		gameMatches[gameIndex[m.GameType]].Matches = append(gameMatches[gameIndex[m.GameType]].Matches, m)
+	}
+
+	type GameTypeResults struct {
+		GameType *GameType
+		Results  []*TournamentResult
+	}
+
 	results, _ := fetchResultsForPlayer(player.ID)
+
+	resultIndex := map[string]int{}
+	gameResults := []GameTypeResults{}
+	for _, result := range results {
+		if _, ok := resultIndex[result.Tournament.GameType]; !ok {
+			gt, _ := fetchGameType(result.Tournament.GameType)
+			gameResults = append(gameResults, GameTypeResults{
+				GameType: gt,
+				Results:  []*TournamentResult{},
+			})
+			resultIndex[result.Tournament.GameType] = len(gameResults) - 1
+		}
+		gameResults[resultIndex[result.Tournament.GameType]].Results = append(gameResults[resultIndex[result.Tournament.GameType]].Results, result)
+	}
 
 	data := struct {
 		Player    *Player
-		Matches   []Match
-		Results   []*TournamentResult
+		Matches   []GameTypeMatches
+		Results   []GameTypeResults
 		PlayerMap map[string]Player
 		CanEdit   bool
 	}{
 		player,
-		matches,
-		results,
+		gameMatches,
+		gameResults,
 		playerMap,
 		canEdit,
 	}

@@ -7,10 +7,19 @@ import (
 func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 	p1 := r.FormValue("p1")
 	p2 := r.FormValue("p2")
-	var matches *[]Match
+
+	type GameTypeMatches struct {
+		GameType     *GameType
+		Player1Sets  int
+		Player2Sets  int
+		Player1Games int
+		Player2Games int
+		Matches      []Match
+	}
+
+	gameMatches := []GameTypeMatches{}
 	var player1 *Player
 	var player2 *Player
-	player1sets, player2sets, player1matches, player2matches := 0, 0, 0, 0
 	if p1 != "" && p2 != "" {
 		var err1 error
 		var err2 error
@@ -21,43 +30,52 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		_, logged := isLoggedIn(r)
-		matches = fetchMatchesForPlayers(player1.ID, player2.ID, logged)
-		for _, g := range *matches {
-			if g.Player1 == player1.ID {
-				player1matches += g.Player1score
-				player2matches += g.Player2score
-				if g.Player1score > g.Player2score {
-					player1sets++
+		matches := fetchMatchesForPlayers(player1.ID, player2.ID, logged)
+
+		// sort matches by game
+		gameIndex := map[string]int{}
+		for _, m := range *matches {
+			if _, ok := gameIndex[m.GameType]; !ok {
+				gt, _ := fetchGameType(m.GameType)
+				gameMatches = append(gameMatches, GameTypeMatches{
+					GameType: gt,
+					Matches:  []Match{},
+				})
+				gameIndex[m.GameType] = len(gameMatches) - 1
+			}
+			gameMatches[gameIndex[m.GameType]].Matches = append(gameMatches[gameIndex[m.GameType]].Matches, m)
+		}
+
+		for idx := range gameMatches {
+			for _, g := range gameMatches[idx].Matches {
+				if g.Player1 == player1.ID {
+					gameMatches[idx].Player1Games += g.Player1score
+					gameMatches[idx].Player2Games += g.Player2score
+					if g.Player1score > g.Player2score {
+						gameMatches[idx].Player1Sets++
+					} else {
+						gameMatches[idx].Player2Sets++
+					}
 				} else {
-					player2sets++
-				}
-			} else {
-				player2matches += g.Player1score
-				player1matches += g.Player2score
-				if g.Player1score > g.Player2score {
-					player2sets++
-				} else {
-					player1sets++
+					gameMatches[idx].Player2Games += g.Player1score
+					gameMatches[idx].Player1Games += g.Player2score
+					if g.Player1score > g.Player2score {
+						gameMatches[idx].Player2Sets++
+					} else {
+						gameMatches[idx].Player1Sets++
+					}
 				}
 			}
 		}
 	}
 	data := struct {
-		Matches      *[]Match
-		Player1      *Player
-		Player2      *Player
-		Player1Sets  int
-		Player2Sets  int
-		Player1Games int
-		Player2Games int
+		Matches []GameTypeMatches
+		Player1 *Player
+		Player2 *Player
 	}{
-		matches,
+		gameMatches,
 		player1,
 		player2,
-		player1sets,
-		player2sets,
-		player1matches,
-		player2matches,
 	}
 	renderTemplate(w, r, "faceoff", data)
 }
