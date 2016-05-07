@@ -34,6 +34,7 @@
   <div>
     {{$p1 := index $.PlayerMap .Player1}}
     {{$p2 := index $.PlayerMap .Player2}}
+    {{$t := index $.TournamentMap .Tournament}}
     {{if eq $p1.ID $.Player.ID}}
       {{if gt .Player1score .Player2score}}
         W
@@ -55,6 +56,8 @@
         ({{.Player2score}}-{{.Player1score}})
         </span>
     {{end}}
+    @ <a href="/tournament/{{.Tournament}}">{{$t.Name}}</a>
+    on {{$t.DateStart.Month}} {{$t.DateStart.Day}}, {{$t.DateStart.Year}}
     {{if .Hidden}}
     (Hidden)
     {{end}}

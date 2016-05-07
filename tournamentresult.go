@@ -90,6 +90,24 @@ func fetchResultsForPlayer(playerID string) ([]*TournamentResult, error) {
 	return results, nil
 }
 
+func fetchTournamentsForPlayers(player1 string, player2 string) ([]*Tournament, error) {
+	c, err := getTournamentResultTable().Filter(
+		r.Or(r.Row.Field("player").Eq(player1), r.Row.Field("player").Eq(player2)),
+	).EqJoin("tournament", getTournamentTable()).
+		OrderBy(r.Desc(r.Row.Field("right").Field("date_start"))).Without("left").
+		Field("right").Distinct().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+	matches := []*Tournament{}
+	err = c.All(&matches)
+	if err != nil {
+		return nil, err
+	}
+	return matches, nil
+}
+
 func editTournamentResultHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	resultID := vars["result"]
