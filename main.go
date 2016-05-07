@@ -209,8 +209,10 @@ func main() {
 	// API
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.Methods("OPTIONS").HandlerFunc(handleAPIPreflight)
-	api.HandleFunc("/players.json", handleAPIPlayers)
-	api.HandleFunc("/players/search.json", handleAPIPlayersSearch)
+	api.HandleFunc("/gametypes", handleAPIGameTypes)
+	api.HandleFunc("/players", handleAPIPlayers)
+	api.HandleFunc("/players/search", handleAPIPlayersSearch)
+	api.HandleFunc("/players/{id:[-a-zA-Z0-9]+}/tournamentresults", handleAPIPlayerTournamentResults)
 
 	fmt.Println("We're up and running!")
 

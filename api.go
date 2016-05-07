@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func writeCORSHeaders(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +32,11 @@ func handleAPIPreflight(w http.ResponseWriter, r *http.Request) {
 	writeCORSHeaders(w, r)
 }
 
+func handleAPIGameTypes(w http.ResponseWriter, r *http.Request) {
+	gt := fetchGameTypes()
+	writeAPIResponse(w, r, gt)
+}
+
 func handleAPIPlayers(w http.ResponseWriter, r *http.Request) {
 	p := fetchPlayers()
 	writeAPIResponse(w, r, p)
@@ -43,4 +50,36 @@ func handleAPIPlayersSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeAPIResponse(w, r, p)
+}
+
+func handleAPIPlayerTournamentResults(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	playerID := vars["id"]
+
+	gameType := r.FormValue("gametype")
+
+	rs, err := fetchResultsForPlayer(playerID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	type ResultJSON struct {
+		Seed       int         `json:"seed"`
+		Place      int         `json:"place"`
+		Tournament *Tournament `json:"tournament"`
+	}
+
+	results := []ResultJSON{}
+	for _, result := range rs {
+		if gameType != "" && gameType != result.Tournament.GameType {
+			continue
+		}
+		results = append(results, ResultJSON{
+			Seed:       result.Seed,
+			Place:      result.Place,
+			Tournament: result.Tournament,
+		})
+	}
+
+	writeAPIResponse(w, r, results)
 }
