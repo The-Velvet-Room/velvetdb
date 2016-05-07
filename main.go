@@ -211,8 +211,11 @@ func main() {
 	api.Methods("OPTIONS").HandlerFunc(handleAPIPreflight)
 	api.HandleFunc("/gametypes", handleAPIGameTypes)
 	api.HandleFunc("/players", handleAPIPlayers)
+	api.HandleFunc("/players/{id:[-a-zA-Z0-9]+}", handleAPIPlayer)
 	api.HandleFunc("/players/search", handleAPIPlayersSearch)
 	api.HandleFunc("/players/{id:[-a-zA-Z0-9]+}/tournamentresults", handleAPIPlayerTournamentResults)
+	api.HandleFunc("/players/{id:[-a-zA-Z0-9]+}/matches", handleAPIPlayerMatches)
+	api.HandleFunc("/players/{p1:[-a-zA-Z0-9]+}/{p2:[-a-zA-Z0-9]+}/matches", handleAPIFaceoff)
 
 	fmt.Println("We're up and running!")
 

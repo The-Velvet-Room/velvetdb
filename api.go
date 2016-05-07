@@ -37,6 +37,18 @@ func handleAPIGameTypes(w http.ResponseWriter, r *http.Request) {
 	writeAPIResponse(w, r, gt)
 }
 
+func handleAPIPlayer(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	playerID := vars["id"]
+
+	p, err := fetchPlayer(playerID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeAPIResponse(w, r, p)
+}
+
 func handleAPIPlayers(w http.ResponseWriter, r *http.Request) {
 	p := fetchPlayers()
 	writeAPIResponse(w, r, p)
@@ -82,4 +94,41 @@ func handleAPIPlayerTournamentResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeAPIResponse(w, r, results)
+}
+
+func handleAPIPlayerMatches(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	playerID := vars["id"]
+
+	gametype := r.FormValue("gametype")
+
+	matches := fetchMatchesForPlayer(playerID, false)
+
+	filterMatches := []Match{}
+	for _, m := range matches {
+		if gametype != "" && gametype != m.GameType {
+			continue
+		}
+		filterMatches = append(filterMatches, m)
+	}
+	writeAPIResponse(w, r, filterMatches)
+}
+
+func handleAPIFaceoff(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	p1 := vars["p1"]
+	p2 := vars["p2"]
+
+	gametype := r.FormValue("gametype")
+
+	matches := fetchMatchesForPlayers(p1, p2, false)
+
+	filterMatches := []Match{}
+	for _, m := range *matches {
+		if gametype != "" && gametype != m.GameType {
+			continue
+		}
+		filterMatches = append(filterMatches, m)
+	}
+	writeAPIResponse(w, r, filterMatches)
 }
