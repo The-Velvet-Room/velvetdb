@@ -3,6 +3,9 @@
 {{ define "content" }}
   <h1>{{.Tournament.Name}}</h1>
   <h3>{{.GameType.Name}}</h3>
+  {{with .Tournament}}
+  <div>{{.DateStart.Month}} {{.DateStart.Day}}, {{.DateStart.Year}}</div>
+  {{end}}
 
   {{with .PoolOf}}
   <p>Pool of:
