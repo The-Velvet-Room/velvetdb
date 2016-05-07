@@ -56,6 +56,8 @@ func handleAPIPlayerTournamentResults(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	playerID := vars["id"]
 
+	gameType := r.FormValue("gametype")
+
 	rs, err := fetchResultsForPlayer(playerID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -69,6 +71,9 @@ func handleAPIPlayerTournamentResults(w http.ResponseWriter, r *http.Request) {
 
 	results := []ResultJSON{}
 	for _, result := range rs {
+		if gameType != "" && gameType != result.Tournament.GameType {
+			continue
+		}
 		results = append(results, ResultJSON{
 			Seed:       result.Seed,
 			Place:      result.Place,
