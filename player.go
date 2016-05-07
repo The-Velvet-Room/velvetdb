@@ -331,12 +331,12 @@ func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Player    *Player
-		Matches   []GameTypeMatches
-		Results   []GameTypeResults
-		PlayerMap map[string]Player
+		Player        *Player
+		Matches       []GameTypeMatches
+		Results       []GameTypeResults
+		PlayerMap     map[string]Player
 		TournamentMap map[string]*Tournament
-		CanEdit   bool
+		CanEdit       bool
 	}{
 		player,
 		gameMatches,

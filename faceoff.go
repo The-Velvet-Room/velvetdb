@@ -75,10 +75,10 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data := struct {
-		Matches []GameTypeMatches
+		Matches       []GameTypeMatches
 		TournamentMap map[string]*Tournament
-		Player1 *Player
-		Player2 *Player
+		Player1       *Player
+		Player2       *Player
 	}{
 		gameMatches,
 		tournamentMap,
