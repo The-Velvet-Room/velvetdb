@@ -315,8 +315,10 @@ func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	results, _ := fetchResultsForPlayer(player.ID)
 
 	resultIndex := map[string]int{}
+	tournamentMap := map[string]*Tournament{}
 	gameResults := []GameTypeResults{}
 	for _, result := range results {
+		tournamentMap[result.TournamentID] = result.Tournament
 		if _, ok := resultIndex[result.Tournament.GameType]; !ok {
 			gt, _ := fetchGameType(result.Tournament.GameType)
 			gameResults = append(gameResults, GameTypeResults{
@@ -329,16 +331,18 @@ func playerViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		Player    *Player
-		Matches   []GameTypeMatches
-		Results   []GameTypeResults
-		PlayerMap map[string]Player
-		CanEdit   bool
+		Player        *Player
+		Matches       []GameTypeMatches
+		Results       []GameTypeResults
+		PlayerMap     map[string]Player
+		TournamentMap map[string]*Tournament
+		CanEdit       bool
 	}{
 		player,
 		gameMatches,
 		gameResults,
 		playerMap,
+		tournamentMap,
 		canEdit,
 	}
 

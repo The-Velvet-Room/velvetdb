@@ -18,6 +18,7 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	gameMatches := []GameTypeMatches{}
+	tournamentMap := map[string]*Tournament{}
 	var player1 *Player
 	var player2 *Player
 	if p1 != "" && p2 != "" {
@@ -67,13 +68,20 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		// build tournament map
+		ts, _ := fetchTournamentsForPlayers(p1, p2)
+		for _, t := range ts {
+			tournamentMap[t.ID] = t
+		}
 	}
 	data := struct {
-		Matches []GameTypeMatches
-		Player1 *Player
-		Player2 *Player
+		Matches       []GameTypeMatches
+		TournamentMap map[string]*Tournament
+		Player1       *Player
+		Player2       *Player
 	}{
 		gameMatches,
+		tournamentMap,
 		player1,
 		player2,
 	}
