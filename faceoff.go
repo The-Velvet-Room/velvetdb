@@ -69,7 +69,7 @@ func faceoffHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		// build tournament map
-		ts, _ := fetchTournamentsForPlayers(p1, p2)
+		ts, _ := fetchTournamentsForPlayers(player1.ID, player2.ID)
 		for _, t := range ts {
 			tournamentMap[t.ID] = t
 		}
