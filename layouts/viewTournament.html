@@ -28,8 +28,9 @@
 
   <div>Bracket: <a href="{{.Tournament.BracketURL}}">{{.Tournament.BracketURL}}</a></div>
 
+  {{with .PlacedResults}}
   <h3>Results</h3>
-  {{range .Results}}
+    {{range .}}
     {{$p := index $.PlayerMap .Player}}
     <div>
       {{.Place}} - Seeded {{.Seed}}
@@ -38,6 +39,19 @@
       <a href="/tournamentresult/edit/{{.ID}}">[Edit]</a>
       {{end}}
     </div>
+    {{end}}
+  {{end}}
+  {{with .UnplacedResults}}
+  <h3>Unplaced Results</h3>
+    {{range .}}
+    {{$p := index $.PlayerMap .Player}}
+    <div>
+      <a href="/player/{{$p.URLPath}}">{{$p.Nickname}}</a>
+      {{if $.IsLoggedIn}}
+      <a href="/tournamentresult/edit/{{.ID}}">[Edit]</a>
+      {{end}}
+    </div>
+    {{end}}
   {{end}}
 
   <h3>Matches</h3>

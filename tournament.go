@@ -171,10 +171,16 @@ func savePoolHandler(w http.ResponseWriter, r *http.Request) {
 
 	// if we find a tournament with the same bracket url,
 	// redirect to that tournament
-	var t Tournament
+	var t *Tournament
 	if !c.IsNil() {
 		c.One(&t)
 		http.Redirect(w, r, "/tournament/"+t.ID, http.StatusFound)
+		return
+	}
+
+	t, err = fetchTournament(poolOf)
+	if err != nil {
+		http.Error(w, "No tournament with ID "+poolOf+" found", http.StatusBadRequest)
 		return
 	}
 
@@ -554,22 +560,34 @@ func viewTournamentHandler(w http.ResponseWriter, r *http.Request) {
 	gametype, _ := fetchGameType(t.GameType)
 	pools, _ := fetchTournamentPools(t.ID)
 	results, _ := fetchResultsForTournament(t.ID)
+	// Sort the results into results that have a place and results that don't
+	placedResults := []*TournamentResult{}
+	unplacedResults := []*TournamentResult{}
+	for _, r := range results {
+		if r.Place == 0 {
+			unplacedResults = append(unplacedResults, r)
+		} else {
+			placedResults = append(placedResults, r)
+		}
+	}
 
 	data := struct {
-		Tournament *Tournament
-		GameType   *GameType
-		PoolOf     *Tournament
-		Pools      []*Tournament
-		Results    []*TournamentResult
-		Matches    []Match
-		PlayerMap  map[string]Player
-		IsLoggedIn bool
+		Tournament      *Tournament
+		GameType        *GameType
+		PoolOf          *Tournament
+		Pools           []*Tournament
+		PlacedResults   []*TournamentResult
+		UnplacedResults []*TournamentResult
+		Matches         []Match
+		PlayerMap       map[string]Player
+		IsLoggedIn      bool
 	}{
 		t,
 		gametype,
 		poolOf,
 		pools,
-		results,
+		placedResults,
+		unplacedResults,
 		matches,
 		playerMap,
 		logged,
