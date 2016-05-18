@@ -125,6 +125,44 @@ func fetchTournamentPools(ID string) ([]*Tournament, error) {
 	return t, nil
 }
 
+func fetchTournamentsForPlayer(ID string) ([]*Tournament, error) {
+	c, err := getMatchTable().Filter(
+		r.Or(r.Row.Field("player1").Eq(ID), r.Row.Field("player2").Eq(ID)),
+	).EqJoin("tournament", getTournamentTable()).
+		Without("left").Field("right").Distinct().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var t []*Tournament
+	err = c.All(&t)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func fetchTournamentsForPlayers(player1 string, player2 string) ([]*Tournament, error) {
+	c, err := getMatchTable().Filter(
+		r.Or(
+			r.And(r.Row.Field("player1").Eq(player1), r.Row.Field("player2").Eq(player2)),
+			r.And(r.Row.Field("player1").Eq(player2), r.Row.Field("player2").Eq(player1)),
+		),
+	).EqJoin("tournament", getTournamentTable()).
+		Without("left").Field("right").Distinct().Run(dataStore.GetSession())
+	defer c.Close()
+	if err != nil {
+		return nil, err
+	}
+	matches := []*Tournament{}
+	err = c.All(&matches)
+	if err != nil {
+		return nil, err
+	}
+	return matches, nil
+}
+
 func deleteTournament(ID string) {
 	// Delete the tournament matches
 	getMatchTable().Filter(map[string]interface{}{
