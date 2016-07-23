@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/dguenther/go-challonge"
+	"github.com/dguenther/go-bracket"
 	"github.com/gorilla/mux"
 	"github.com/jasonwinn/geocoder"
 	r "gopkg.in/dancannon/gorethink.v2"
@@ -32,12 +30,6 @@ type Tournament struct {
 }
 
 const initialLastID string = "0"
-
-type matchesByID []*challonge.Match
-
-func (a matchesByID) Len() int           { return len(a) }
-func (a matchesByID) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a matchesByID) Less(i, j int) bool { return a[i].Id < a[j].Id }
 
 func getTournamentTable() r.Term {
 	return r.Table("tournaments")
@@ -222,7 +214,7 @@ func savePoolHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ct := fetchChallongeTournament(url)
+	ct := fetchExternalBracket(url)
 
 	id := addTournament(Tournament{
 		Name:        name,
@@ -234,7 +226,7 @@ func savePoolHandler(w http.ResponseWriter, r *http.Request) {
 		Location:    t.Location,
 		DateStart:   *ct.StartedAt,
 		DateEnd:     *ct.UpdatedAt,
-		PlayerCount: ct.ParticipantsCount,
+		PlayerCount: len(ct.Players),
 		Editing:     true,
 	})
 
@@ -309,7 +301,7 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	t := fetchChallongeTournament(url)
+	t := fetchExternalBracket(url)
 
 	id := addTournament(Tournament{
 		Name:        name,
@@ -317,7 +309,7 @@ func saveTournamentHandler(w http.ResponseWriter, r *http.Request) {
 		GameType:    gametype,
 		DateStart:   *t.StartedAt,
 		DateEnd:     *t.UpdatedAt,
-		PlayerCount: t.ParticipantsCount,
+		PlayerCount: len(t.Players),
 		City:        city,
 		State:       state,
 		Location:    point,
@@ -379,14 +371,14 @@ func addTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ct := fetchChallongeTournament(t.BracketURL)
+	ct := fetchExternalBracket(t.BracketURL)
 	data := struct {
 		Tournament   *Tournament
-		Participants []*challonge.Participant
+		Participants []*bracket.Player
 		Complete     bool
 	}{
 		t,
-		ct.Participants,
+		ct.Players,
 		ct.State == "complete",
 	}
 	renderTemplate(w, r, "addTournamentMatch", data)
@@ -432,7 +424,7 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 		playerMap[split[1]] = playerID
 	}
 
-	ct := fetchChallongeTournament(t.BracketURL)
+	b := fetchExternalBracket(t.BracketURL)
 
 	// Add tournament results
 	oldResults, _ := fetchResultsForTournament(rootTournamentID)
@@ -442,24 +434,24 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newResults := []*TournamentResult{}
-	for _, p := range ct.Participants {
-		id := strconv.Itoa(p.Id)
+	for _, p := range b.Players {
 		// If we've already saved a result for this player,
 		// don't save another one
-		if _, ok := resultDict[playerMap[id]]; ok {
+		ourPlayerID := playerMap[p.ID]
+		if _, ok := resultDict[ourPlayerID]; ok {
 			continue
 		}
 
 		// Add tournament results for all players we haven't added yet.
 		tr := &TournamentResult{
 			TournamentID: rootTournamentID,
-			Player:       playerMap[id],
+			Player:       ourPlayerID,
 			Place:        0,
 			Seed:         0,
 		}
 		// Only add the place and seed of the player if it's the final bracket.
 		if t.PoolOf == "" {
-			tr.Place = p.FinalRank
+			tr.Place = p.Rank
 			tr.Seed = p.Seed
 		}
 		newResults = append(newResults, tr)
@@ -471,54 +463,23 @@ func saveTournamentMatchesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Add tournament matches
 	newMatches := []*Match{}
-	for _, m := range ct.Matches {
+	for _, m := range b.Matches {
 		// Only add completed matches
 		if m.State != "complete" {
 			continue
 		}
-		p1score := 0
-		p2score := 0
-		if m.Scores == "" {
-			if m.PlayerOneId == m.WinnerId {
-				p1score = 1
-			} else {
-				p2score = 1
-			}
-		} else {
-			// sum up the set results, since we're not tracking sets yet
-			for _, set := range strings.Split(m.Scores, ",") {
-				scoreSplit := strings.SplitN(set, "-", 2)
-				p1setscore, _ := strconv.Atoi(scoreSplit[0])
-				p2setscore, _ := strconv.Atoi(scoreSplit[1])
-				p1score += p1setscore
-				p2score += p2setscore
-			}
-		}
 
-		p1 := strconv.Itoa(m.PlayerOneId)
-		p2 := strconv.Itoa(m.PlayerTwoId)
-		var p1prereq *string
-		var p2prereq *string
-		if m.PlayerOnePrereqMatch != nil {
-			p1prereq = new(string)
-			*p1prereq = strconv.Itoa(*m.PlayerOnePrereqMatch)
-		}
-		if m.PlayerTwoPrereqMatch != nil {
-			p2prereq = new(string)
-			*p2prereq = strconv.Itoa(*m.PlayerTwoPrereqMatch)
-		}
-		tMatchID := strconv.Itoa(m.Id)
 		newMatches = append(newMatches, &Match{
 			Date:                       *m.UpdatedAt,
 			GameType:                   t.GameType,
 			Tournament:                 t.ID,
-			TournamentMatchID:          tMatchID,
-			Player1:                    playerMap[p1],
-			Player2:                    playerMap[p2],
-			Player1PrevTournamentMatch: p1prereq,
-			Player2PrevTournamentMatch: p2prereq,
-			Player1score:               p1score,
-			Player2score:               p2score,
+			TournamentMatchID:          m.ID,
+			Player1:                    playerMap[m.Player1ID],
+			Player2:                    playerMap[m.Player2ID],
+			Player1PrevTournamentMatch: m.Player1PrereqMatchID,
+			Player2PrevTournamentMatch: m.Player2PrereqMatchID,
+			Player1score:               m.Player1Score,
+			Player2score:               m.Player2Score,
 			Round:                      m.Round,
 		})
 	}
@@ -667,40 +628,11 @@ func viewTournamentsHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "tournaments", data)
 }
 
-func fetchChallongeTournament(url string) *challonge.Tournament {
-	client := challonge.New(siteConfiguration.ChallongeDevUsername, siteConfiguration.ChallongeApiKey)
-	hash := parseChallongeURL(url)
-	tourneyData, err := client.NewTournamentRequest(hash).WithMatches().WithParticipants().Get()
+func fetchExternalBracket(url string) *bracket.Bracket {
+	client := bracket.NewClient(siteConfiguration.ChallongeDevUsername, siteConfiguration.ChallongeApiKey)
+	bracket, err := client.FetchBracket(url)
 	if err != nil {
 		fmt.Println(err)
 	}
-	return tourneyData
-}
-
-func fetchChallongeMatches(url string) []*challonge.Match {
-	client := challonge.New(siteConfiguration.ChallongeDevUsername, siteConfiguration.ChallongeApiKey)
-	hash := parseChallongeURL(url)
-	tourneyData, err := client.NewTournamentRequest(hash).WithMatches().WithParticipants().Get()
-	if err != nil {
-		fmt.Println(err)
-	}
-	matches := tourneyData.GetMatches()
-	sort.Sort(matchesByID(matches))
-	return matches
-}
-
-func parseChallongeURL(url string) string {
-	tourneyHash := url[strings.LastIndex(url, "/")+1 : len(url)]
-	tourneyHash = strings.TrimSpace(tourneyHash)
-
-	//If tournament belongs to an organization,
-	//it must be specified in the request
-	if len(strings.Split(url, "."))-1 > 1 {
-		orgHash := url[strings.LastIndex(url, "http://")+7 : strings.Index(url, ".")]
-		challongeHash := orgHash + "-" + tourneyHash
-		return challongeHash
-	}
-
-	//Standard tournament
-	return tourneyHash
+	return bracket
 }
